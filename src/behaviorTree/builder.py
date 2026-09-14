@@ -1,190 +1,162 @@
 """
-JSON / PDDL plan -> py_trees tree builder.
-
-Converts JSON tree specifications or PDDL plan strings into executable py_trees Behavior Trees.
-
-Expected node shapes (JSON spec):
-  {"type": "sequence" | "selector", "children": [ ... ], "memory": true}
-  {"type": "action",    "name": "PickUp", "args": {"object": "can_1", ...}}
-  {"type": "condition", "name": "VisualCheck", "args": {"true_situation": "..."}}
-  {"type": "decorator", "decorator": "retry" | "inverter", "child": {...}, "num_attempts": 10}
+Behavior Tree Builder:
+Compiles PDDL plans into executable py_trees Behavior Trees.
 """
 from __future__ import annotations
-from typing import Any, Dict, List, Optional, Union
+
+from typing import Any, List, Optional, Union
 import py_trees
 
 from .skills import SKILL_REGISTRY
-from .conditions import CONDITION_REGISTRY
-
-COMPOSITE_REGISTRY = {
-    "sequence": py_trees.composites.Sequence,
-    "selector": py_trees.composites.Selector,
-}
+from .conditions import CONDITION_REGISTRY, PDDLGoalCheck
 
 
-def build_node(spec: Dict[str, Any], env=None, camera=None, vlm_query_fn=None) -> py_trees.behaviour.Behaviour:
-    """Build a single py_trees node (and its children) from a dictionary specification."""
-    node_type = spec["type"]
-
-    if node_type in COMPOSITE_REGISTRY:
-        composite_cls = COMPOSITE_REGISTRY[node_type]
-        node = composite_cls(name=spec.get("name", node_type), memory=spec.get("memory", True))
-        for child_spec in spec["children"]:
-            node.add_child(build_node(child_spec, env=env, camera=camera, vlm_query_fn=vlm_query_fn))
-        return node
-
-    if node_type == "decorator":
-        child = build_node(spec["child"], env=env, camera=camera, vlm_query_fn=vlm_query_fn)
-        deco = spec["decorator"]
-        if deco == "retry":
-            return py_trees.decorators.Retry(
-                name=spec.get("name", "retry"), child=child,
-                num_failures=spec.get("num_attempts", 10),
-            )
-        if deco == "inverter":
-            return py_trees.decorators.Inverter(name=spec.get("name", "inverter"), child=child)
-        raise ValueError(f"Unknown decorator '{deco}'")
-
-    if node_type == "action":
-        skill_cls = SKILL_REGISTRY.get(spec["name"])
-        if skill_cls is None:
-            raise KeyError(f"Unregistered skill '{spec['name']}'. Known skills: {list(SKILL_REGISTRY)}")
-        return skill_cls(name=spec["name"], args=spec.get("args", {}), env=env)
-
-    if node_type == "condition":
-        cond_cls = CONDITION_REGISTRY.get(spec["name"])
-        if cond_cls is None:
-            raise KeyError(f"Unregistered condition '{spec['name']}'. Known conditions: {list(CONDITION_REGISTRY)}")
-        return cond_cls(name=spec["name"], args=spec.get("args", {}), camera=camera, vlm_query_fn=vlm_query_fn)
-
-    raise ValueError(f"Unknown node type '{node_type}'")
-
-
-def wrap_with_goal_check(
-    main_sequence_spec: Dict[str, Any],
-    goal_check_spec: Dict[str, Any],
-    env=None,
-    camera=None,
-    vlm_query_fn=None,
-    num_attempts: int = 10
-) -> py_trees.behaviour.Behaviour:
+# ---------------------------------------------------------------------------
+# PDDL Plan Parsing & Compilation
+# ---------------------------------------------------------------------------
+def parse_pddl_action(line: str) -> Optional[tuple[str, List[str]]]:
     """
-    Wrap main sequence with top-level goal check and retry loop:
-        root = selector [
-            GoalCheck,
-            retry( sequence [ MAIN_SEQUENCE, GoalCheck ] )
+    Parse a single PDDL plan action line.
+
+    Examples:
+        "(pick yellow_cube)"      -> ("pick", ["yellow_cube"])
+        "0: (place cube pot)"     -> ("place", ["cube", "pot"])
+        "; cost = 2 (unit cost)"  -> None
+    """
+    clean = line.strip()
+    if not clean or clean.startswith(";"):
+        return None
+
+    # Strip step index if present (e.g., "0: (pick obj)")
+    if ":" in clean and clean.split(":", 1)[0].isdigit():
+        clean = clean.split(":", 1)[1].strip()
+
+    # Strip surrounding parentheses
+    clean = clean.lstrip("(").rstrip(")").strip()
+    tokens = clean.split()
+    if not tokens:
+        return None
+
+    return tokens[0].lower(), tokens[1:]
+
+
+def pddl_plan_to_sequence(plan: Union[str, List[str]], env=None) -> py_trees.composites.Sequence:
+    """
+    Compile Fast Downward PDDL plan lines into an executable py_trees Sequence.
+
+    Example:
+        "(pick yellow_cube)\\n(place yellow_cube pot)"
+    Yields:
+        Sequence [
+            MotionPlanningPickUp(object='yellow_cube'),
+            MotionPlanningPlaceInBin(object='yellow_cube', asset='pot')
         ]
     """
-    goal_check_top = build_node(goal_check_spec, env=env, camera=camera, vlm_query_fn=vlm_query_fn)
-    main_sequence = build_node(main_sequence_spec, env=env, camera=camera, vlm_query_fn=vlm_query_fn)
-    goal_check_after = build_node(goal_check_spec, env=env, camera=camera, vlm_query_fn=vlm_query_fn)
+    lines = plan.strip().split("\n") if isinstance(plan, str) else plan
+    sequence = py_trees.composites.Sequence(name="pddl_plan_sequence", memory=True)
+
+    for line in lines:
+        parsed = parse_pddl_action(line)
+        if not parsed:
+            continue
+
+        action, args = parsed
+
+        if action == "pick":
+            obj = args[0] if args else ""
+            skill_cls = SKILL_REGISTRY["MotionPlanningPickUp"]
+            sequence.add_child(skill_cls(name=f"PickUp({obj})", args={"object": obj}, env=env))
+
+        elif action == "place":
+            obj = args[0] if args else ""
+            target = args[1] if len(args) > 1 else "bin"
+            skill_cls = SKILL_REGISTRY["MotionPlanningPlaceInBin"]
+            sequence.add_child(
+                skill_cls(name=f"PlaceInBin({obj}->{target})", args={"object": obj, "asset": target}, env=env)
+            )
+
+        elif action in SKILL_REGISTRY:
+            skill_cls = SKILL_REGISTRY[action]
+            kwargs = {f"arg{i}": a for i, a in enumerate(args)}
+            sequence.add_child(skill_cls(name=action, args=kwargs, env=env))
+
+        else:
+            raise KeyError(f"Unknown PDDL action '{action}'. Registered skills: {list(SKILL_REGISTRY.keys())}")
+
+    return sequence
+
+
+# ---------------------------------------------------------------------------
+# Goal-Guarded Wrapper
+# ---------------------------------------------------------------------------
+def wrap_with_goal_check(
+    sequence: Optional[py_trees.behaviour.Behaviour] = None,
+    env=None,
+    num_attempts: int = 10,
+    camera: Any = None,
+    vlm_query_fn: Optional[Any] = None,
+    goal_situation: Optional[str] = None,
+    main_sequence: Optional[py_trees.behaviour.Behaviour] = None,
+) -> py_trees.composites.Selector:
+    """
+    Wrap an action sequence in a reactive retry loop guarded by GoalCheck:
+
+        root = Selector [
+            GoalCheck_Pre  (check if goal is already met before acting),
+            Retry( Sequence [ sequence, GoalCheck_Post ], num_failures=num_attempts )
+        ]
+    """
+    seq = sequence or main_sequence
+    if seq is None:
+        raise ValueError("Must provide an action sequence to wrap_with_goal_check.")
+
+    args = {"true_situation": goal_situation} if goal_situation else {}
+    cond_cls = CONDITION_REGISTRY.get("GoalCheck", PDDLGoalCheck)
+
+    goal_check_pre = cond_cls(name="GoalCheck_Pre", args=args, env=env, camera=camera, vlm_query_fn=vlm_query_fn)
+    goal_check_post = cond_cls(name="GoalCheck_Post", args=args, env=env, camera=camera, vlm_query_fn=vlm_query_fn)
 
     attempt = py_trees.composites.Sequence(name="attempt", memory=True)
-    attempt.add_child(main_sequence)
-    attempt.add_child(goal_check_after)
+    attempt.add_child(seq)
+    attempt.add_child(goal_check_post)
 
     retry = py_trees.decorators.Retry(name="retry_until_goal", child=attempt, num_failures=num_attempts)
 
-    root = py_trees.composites.Selector(name="root", memory=False)
-    root.add_child(goal_check_top)
+    root = py_trees.composites.Selector(name="goal_guarded_root", memory=False)
+    root.add_child(goal_check_pre)
     root.add_child(retry)
     return root
 
 
-def pddl_plan_to_bt_spec(plan: Union[str, List[str]]) -> Dict[str, Any]:
-    """
-    Convert a PDDL plan string (or list of action strings) into a Behavior Tree specification dictionary.
-
-    Example input:
-        "(pick red_can)\n(place red_can bin)"
-    Example output spec:
-        {
-            "type": "sequence",
-            "name": "pddl_plan_sequence",
-            "memory": True,
-            "children": [
-                {"type": "action", "name": "PickUp", "args": {"object": "red_can"}},
-                {"type": "action", "name": "PlaceInBin", "args": {"object": "red_can", "asset": "bin"}}
-            ]
-        }
-    """
-    if isinstance(plan, str):
-        lines = plan.strip().split('\n')
-    else:
-        lines = plan
-
-    children = []
-    for line in lines:
-        line = line.strip()
-        if not line or line.startswith(";"):
-            continue
-            
-        # Clean surrounding parentheses e.g. "(pick red_can)" -> "pick red_can"
-        clean_line = line.lstrip("(").rstrip(")").strip()
-        tokens = clean_line.split()
-        if not tokens:
-            continue
-            
-        action_name = tokens[0].lower()
-        if action_name == "pick":
-            obj_name = tokens[1] if len(tokens) > 1 else ""
-            children.append({
-                "type": "action",
-                "name": "MotionPlanningPickUp",
-                "args": {"object": obj_name}
-            })
-        elif action_name == "place":
-            obj_name = tokens[1] if len(tokens) > 1 else ""
-            asset_name = tokens[2] if len(tokens) > 2 else "bin"
-            children.append({
-                "type": "action",
-                "name": "MotionPlanningPlaceInBin",
-                "args": {"object": obj_name, "asset": asset_name}
-            })
-        else:
-            # Generic action mapping fallback
-            args = {f"arg{i}": tok for i, tok in enumerate(tokens[1:])}
-            children.append({
-                "type": "action",
-                "name": tokens[0],
-                "args": args
-            })
-
-    return {
-        "type": "sequence",
-        "name": "pddl_plan_sequence",
-        "memory": True,
-        "children": children
-    }
-
-
+# ---------------------------------------------------------------------------
+# Main Entrypoint
+# ---------------------------------------------------------------------------
 def build_bt_from_pddl_plan(
     plan: Union[str, List[str]],
     env=None,
-    camera=None,
-    vlm_query_fn=None,
+    camera: Any = None,
+    vlm_query_fn: Optional[Any] = None,
     goal_situation: Optional[str] = None,
-    num_attempts: int = 10
+    num_attempts: int = 10,
+    wrap_goal_check: bool = False,
+    **kwargs,
 ) -> py_trees.behaviour.Behaviour:
     """
     Build an executable py_trees Behavior Tree directly from a PDDL plan.
-    If goal_situation is provided, wraps the tree in a goal check retry loop.
-    """
-    main_spec = pddl_plan_to_bt_spec(plan)
 
-    if goal_situation:
-        goal_spec = {
-            "type": "condition",
-            "name": "GoalCheck",
-            "args": {"true_situation": goal_situation}
-        }
+    If `goal_situation` or `wrap_goal_check` is enabled, wraps the sequence
+    in a reactive GoalCheck retry loop.
+    """
+    sequence = pddl_plan_to_sequence(plan, env=env)
+
+    if goal_situation or wrap_goal_check:
         return wrap_with_goal_check(
-            main_sequence_spec=main_spec,
-            goal_check_spec=goal_spec,
+            sequence=sequence,
             env=env,
+            num_attempts=num_attempts,
             camera=camera,
             vlm_query_fn=vlm_query_fn,
-            num_attempts=num_attempts
+            goal_situation=goal_situation,
         )
 
-    return build_node(main_spec, env=env, camera=camera, vlm_query_fn=vlm_query_fn)
+    return sequence

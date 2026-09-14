@@ -11,6 +11,8 @@
     (on-table red_can)
     (on-table yellow_cube)
     (on-table blue_can)
+    (on-table pot)
+    (on-table sorting_bin)
   )
   (:goal (and
     (on red_can sorting_bin)
