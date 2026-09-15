@@ -4,6 +4,9 @@
 \usepackage[utf8]{inputenc}
 
 \usepackage{caption}
+\usepackage{forest}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta}
 
 
 \usepackage{listings}
@@ -255,19 +258,25 @@
     \end{columns}
 \end{frame}
 
-\begin{frame}{How to build Behavior Trees: $py\_trees$ library}
-    % Introduction text spanning both columns
-    \texttt{$py\_trees$} is a Python library used to construct Behavior Trees efficiently. It relies primarily on two base classes: \textbf{Behaviours} and \textbf{Composites}.
+\begin{frame}{How to build Behavior Trees: \texttt{py\_trees} library}
     
-    \vspace{0.4cm}
+    % Introduction text spanning full width
+    \texttt{py\_trees} is a Python library used to construct Behavior Trees efficiently. It relies primarily on two base classes: \textbf{Behaviours} and \textbf{Composites}.
+    
+    \vspace{0.3cm}
     
     \begin{columns}[T]
-        % --- Left Column: Text Definitions ---
-        \begin{column}{0.65\textwidth}
+        % --- Left Column: Behaviour ---
+        \begin{column}{0.48\textwidth}
             \begin{itemize}
                 \item \textbf{Behaviour (Leaf):} The smallest element in a tree. Behaviours typically represent a \textbf{condition} (e.g., \textit{Am I hungry?}) or an \textbf{action} (e.g., \textit{Buy chocolate cookies}).
-                \vspace{0.3cm}
-                \item \textbf{Composites (Control Flow):} Responsible for directing the path traced through the tree during a tick. They act as the factories and decision-makers of the tree.
+            \end{itemize}
+        \end{column}
+        
+        % --- Right Column: Composites ---
+        \begin{column}{0.50\textwidth}
+            \begin{itemize}
+                \item \textbf{Composites (Control Flow):} Responsible for directing the path traced through the tree during a tick. 
                 \begin{itemize}
                     \item \textbf{Selectors:} Fallback decision-makers.
                     \item \textbf{Sequences:} Order-dependent factories.
@@ -275,33 +284,48 @@
                 \end{itemize}
             \end{itemize}
         \end{column}
-        
-        % --- Right Column: Composite Images ---
-        \begin{column}{0.30\textwidth}
-            \centering
-            % % --- Selector Image ---
-            % \begin{figure}
-            %     \includegraphics[width=0.7\linewidth]{pictures/selector_icon.pdf} % Replace with your image
-            %     \\ \scriptsize \textbf{Selector}
-            % \end{figure}
-            
-            % \vspace{-0.3cm}
-            
-            % % --- Sequence Image ---
-            % \begin{figure}
-            %     \includegraphics[width=0.7\linewidth]{pictures/sequence_icon.pdf} % Replace with your image
-            %     \\ \scriptsize \textbf{Sequence}
-            % \end{figure}
-            
-            % \vspace{-0.3cm}
-            
-            % % --- Parallel Image ---
-            % \begin{figure}
-            %     \includegraphics[width=0.7\linewidth]{pictures/parallel_icon.pdf} % Replace with your image
-            %     \\ \scriptsize \textbf{Parallel}
-            % \end{figure}
-        \end{column}
     \end{columns}
+    
+    \vspace{0.5cm}
+    
+    % --- Bottom Section: Behavior Tree Schema ---
+    \begin{center}
+        % \resizebox ensures the wide tree fits perfectly within the slide width
+        \resizebox{0.95\textwidth}{!}{
+            \begin{forest}
+                for tree={
+                    draw=black,
+                    thick,
+                    edge={->, >=latex, thick}, % Directed arrows like in your image
+                    l sep=1.0cm, % Reduced vertical spacing so it fits under the text
+                    s sep=0.3cm, % Horizontal spacing between leaves
+                    font=\sffamily\small,
+                    align=center
+                },
+                % Style for the Root Node (Level 0)
+                where level=0{
+                    fill=orange,
+                    shape=rectangle,
+                    minimum width=3cm,
+                    minimum height=1cm
+                }{
+                % Style for the Leaf Nodes (Level 1)
+                    fill=gray!90,
+                    shape=ellipse,
+                    text=white, % White text for better contrast against dark grey
+                    inner sep=4pt
+                }
+                [\textbf{Sequence} % Orange Root
+                    [PickUp\\(yellow\_cube)] % Grey Leaf 1
+                    [PlaceInBin\\(yellow\_cube $\rightarrow$ pot)] % Grey Leaf 2
+                    [PickUp\\(red\_can)] % Grey Leaf 3
+                    [PlaceInBin\\(red\_can $\rightarrow$ sorting\_bin)] % Grey Leaf 4
+                    [PickUp\\(blue\_can)] % Grey Leaf 5
+                    [PlaceInBin\\(blue\_can $\rightarrow$ sorting\_bin)] % Grey Leaf 6
+                ]
+            \end{forest}
+        }
+    \end{center}
 \end{frame}
 
 \begin{frame}[fragile]

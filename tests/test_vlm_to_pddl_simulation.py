@@ -36,8 +36,7 @@ import src.envs  # registers TaskSorting
 from src.envs import RobosuiteEnvAdapter
 from src.ambiguityres.vlm_model import ambresFewShotPrompt, AmbresStructured
 from src.llm2pddl.domains import Domain, PDDLenv
-from src.llm2pddl.problem import Problem
-from src.behaviorTree import build_bt_from_pddl_plan
+from src.behaviorTree import build_bt_from_pddl_plan, render_bt
 
 
 def parse_args():
@@ -69,6 +68,17 @@ def parse_args():
         type=str,
         default=None,
         help="Optional custom filename for output video (defaults to simulation_trial_<idx>_<timestamp>.mp4)",
+    )
+    parser.add_argument(
+        "--render-bt",
+        action="store_true",
+        help="Render and save the generated Behavior Tree diagram (PNG/SVG) into the images folder",
+    )
+    parser.add_argument(
+        "--bt-image-name",
+        type=str,
+        default="behavior_tree",
+        help="Custom filename for the rendered Behavior Tree image in the images folder (default: behavior_tree)",
     )
     return parser.parse_args()
 
@@ -244,6 +254,11 @@ def main():
     print("\n--- Behavior Tree Structure ---")
     print(py_trees.display.ascii_tree(root_node))
     print("-------------------------------")
+
+    # Render Behavior Tree diagram if requested
+    if args.render_bt:
+        images_dir = os.path.join(repo_root, "images")
+        render_bt(root=root_node, name=args.bt_image_name, target_dir=images_dir)
 
     # -------------------------------------------------------------------------
     # 7. Simulation Execution with RRT Motion Planning & Dual-Camera Visualization

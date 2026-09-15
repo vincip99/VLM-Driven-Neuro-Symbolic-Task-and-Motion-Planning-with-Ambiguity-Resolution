@@ -4,6 +4,7 @@ Compiles PDDL plans into executable py_trees Behavior Trees.
 """
 from __future__ import annotations
 
+import os
 from typing import Any, List, Optional, Union
 import py_trees
 
@@ -135,6 +136,36 @@ def wrap_with_goal_check(
 
 
 # ---------------------------------------------------------------------------
+# Tree Visualization & Rendering
+# ---------------------------------------------------------------------------
+def render_bt(
+    root: py_trees.behaviour.Behaviour,
+    name: str = "behavior_tree",
+    target_dir: str = "images",
+) -> str:
+    """
+    Render a py_trees Behavior Tree as a Graphviz diagram (.dot, .png, .svg).
+
+    Args:
+        root: Root node of the Behavior Tree.
+        name: Base filename without extension.
+        target_dir: Directory where diagram files are saved.
+
+    Returns:
+        str: Absolute path to the generated PNG diagram.
+    """
+    os.makedirs(target_dir, exist_ok=True)
+    py_trees.display.render_dot_tree(
+        root=root,
+        name=name,
+        target_directory=target_dir,
+    )
+    png_path = os.path.abspath(os.path.join(target_dir, f"{name}.png"))
+    print(f"[BehaviorTree] Saved graphical tree diagram to: {png_path}")
+    return png_path
+
+
+# ---------------------------------------------------------------------------
 # Main Entrypoint
 # ---------------------------------------------------------------------------
 def build_bt_from_pddl_plan(
@@ -145,6 +176,9 @@ def build_bt_from_pddl_plan(
     goal_situation: Optional[str] = None,
     num_attempts: int = 10,
     wrap_goal_check: bool = False,
+    render: bool = False,
+    render_name: str = "behavior_tree",
+    render_dir: str = "images",
     **kwargs,
 ) -> py_trees.behaviour.Behaviour:
     """
@@ -152,11 +186,12 @@ def build_bt_from_pddl_plan(
 
     If `goal_situation` or `wrap_goal_check` is enabled, wraps the sequence
     in a reactive GoalCheck retry loop.
+    If `render` is True, saves Graphviz .dot, .png, and .svg diagrams to `render_dir`.
     """
     sequence = pddl_plan_to_sequence(plan, env=env)
 
     if goal_situation or wrap_goal_check:
-        return wrap_with_goal_check(
+        root = wrap_with_goal_check(
             sequence=sequence,
             env=env,
             num_attempts=num_attempts,
@@ -164,5 +199,10 @@ def build_bt_from_pddl_plan(
             vlm_query_fn=vlm_query_fn,
             goal_situation=goal_situation,
         )
+    else:
+        root = sequence
 
-    return sequence
+    if render:
+        render_bt(root=root, name=render_name, target_dir=render_dir)
+
+    return root

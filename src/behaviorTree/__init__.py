@@ -2,6 +2,7 @@ from .builder import (
     build_bt_from_pddl_plan,
     pddl_plan_to_sequence,
     wrap_with_goal_check,
+    render_bt,
 )
 from .skills import SKILL_REGISTRY, Skill
 from .conditions import (

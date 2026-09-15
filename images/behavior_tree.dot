@@ -1,0 +1,19 @@
+digraph pastafarianism {
+ordering=out;
+graph [fontname="times-roman"];
+node [fontname="times-roman"];
+edge [fontname="times-roman"];
+pddl_plan_sequence [label="Ⓜ pddl_plan_sequence", shape=box, style=filled, fillcolor=orange, fontsize=9, fontcolor=black];
+"PickUp(yellow_cube)" [label="PickUp(yellow_cube)", shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fontcolor=black];
+pddl_plan_sequence -> "PickUp(yellow_cube)";
+"PlaceInBin(yellow_cube->pot)" [label="PlaceInBin(yellow_cube->pot)", shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fontcolor=black];
+pddl_plan_sequence -> "PlaceInBin(yellow_cube->pot)";
+"PickUp(red_can)" [label="PickUp(red_can)", shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fontcolor=black];
+pddl_plan_sequence -> "PickUp(red_can)";
+"PlaceInBin(red_can->sorting_bin)" [label="PlaceInBin(red_can->sorting_bin)", shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fontcolor=black];
+pddl_plan_sequence -> "PlaceInBin(red_can->sorting_bin)";
+"PickUp(blue_can)" [label="PickUp(blue_can)", shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fontcolor=black];
+pddl_plan_sequence -> "PickUp(blue_can)";
+"PlaceInBin(blue_can->sorting_bin)" [label="PlaceInBin(blue_can->sorting_bin)", shape=ellipse, style=filled, fillcolor=gray, fontsize=9, fontcolor=black];
+pddl_plan_sequence -> "PlaceInBin(blue_can->sorting_bin)";
+}
