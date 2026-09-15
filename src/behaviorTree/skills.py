@@ -86,9 +86,6 @@ class Skill(py_trees.behaviour.Behaviour):
 # ---------------------------------------------------------------------------
 # Pick-Up Skill (TaskSpaceRRT Motion Planning)
 # ---------------------------------------------------------------------------
-@register_skill("MotionPlanningPickUp")
-@register_skill("PickUp")
-@register_skill("Pick")
 @register_skill("pick")
 class MotionPlanningPickUpSkill(Skill):
     """
@@ -236,11 +233,7 @@ class MotionPlanningPickUpSkill(Skill):
 # ---------------------------------------------------------------------------
 # Place-In-Bin Skill (TaskSpaceRRT Motion Planning)
 # ---------------------------------------------------------------------------
-@register_skill("MotionPlanningPlaceInBin")
-@register_skill("PlaceInBin")
-@register_skill("Place")
 @register_skill("place")
-@register_skill("ThrowAway")
 class MotionPlanningPlaceInBinSkill(Skill):
     """
     Transports held object to a target container (bin or pot) using TaskSpaceRRT,

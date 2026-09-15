@@ -208,6 +208,311 @@
 \end{frame}
 
 \section{Executive Layer}
+\begin{frame}
+    \frametitle{Behavior Trees}
+    \begin{columns}[T]
+        % Left Column: Text and Definitions
+        \begin{column}{0.55\textwidth}
+            \small
+            \begin{itemize}
+                \item A \textbf{Behavior Tree} is a directed tree with nodes classified as root, control flow, or execution (tasks).
+                \item Execution starts from the root, which sends \textit{ticks} to its children at a set frequency.
+                \item A node returns one of three statuses: \textbf{Running}, \textbf{Success}, or \textbf{Failure}.
+            \end{itemize}
+            
+            \vspace{0.3cm}
+            
+            \setbeamercolor{verdictbox}{bg=darkblue,fg=white}
+            \begin{beamercolorbox}[sep=4pt,shadow=true,rounded=true]{verdictbox}
+                \centering \textbf{Control Flow Nodes} \\
+                \vspace{0.1cm}
+                \raggedright
+                \footnotesize
+                \begin{itemize}
+                    \setlength\itemsep{0.3em}
+                    \item \textbf{Selector:} A fallback node that executes the first child that does not fail. Returns \textbf{Success} or \textbf{Running}.
+                    \item \textbf{Sequence:} Executes children in order until one succeeds. Returns \textbf{Failure} or \textbf{Running} immediately if a child fails or is still running.
+                \end{itemize}
+            \end{beamercolorbox}
+        \end{column}
+        
+        % Right Column: Image
+        \begin{column}{0.45\textwidth}
+            \begin{figure}
+                \centering
+                \includegraphics[width=\linewidth]{pictures/BT_search_and_grasp.pdf}
+            \end{figure}
+            \vspace{0.5cm}
+            \begin{figure}
+                \centering
+                \includegraphics[width=0.6\linewidth]{pictures/Fallback_in_Behavior_tree.png}
+            \end{figure}
+            \begin{figure}
+                \centering
+                \includegraphics[width=0.6\linewidth]{pictures/Sequence_composition_in_behaviour_trees.png}
+            \end{figure}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{How to build Behavior Trees: $py\_trees$ library}
+    % Introduction text spanning both columns
+    \texttt{$py\_trees$} is a Python library used to construct Behavior Trees efficiently. It relies primarily on two base classes: \textbf{Behaviours} and \textbf{Composites}.
+    
+    \vspace{0.4cm}
+    
+    \begin{columns}[T]
+        % --- Left Column: Text Definitions ---
+        \begin{column}{0.65\textwidth}
+            \begin{itemize}
+                \item \textbf{Behaviour (Leaf):} The smallest element in a tree. Behaviours typically represent a \textbf{condition} (e.g., \textit{Am I hungry?}) or an \textbf{action} (e.g., \textit{Buy chocolate cookies}).
+                \vspace{0.3cm}
+                \item \textbf{Composites (Control Flow):} Responsible for directing the path traced through the tree during a tick. They act as the factories and decision-makers of the tree.
+                \begin{itemize}
+                    \item \textbf{Selectors:} Fallback decision-makers.
+                    \item \textbf{Sequences:} Order-dependent factories.
+                    \item \textbf{Parallels:} Concurrent execution factories.
+                \end{itemize}
+            \end{itemize}
+        \end{column}
+        
+        % --- Right Column: Composite Images ---
+        \begin{column}{0.30\textwidth}
+            \centering
+            % % --- Selector Image ---
+            % \begin{figure}
+            %     \includegraphics[width=0.7\linewidth]{pictures/selector_icon.pdf} % Replace with your image
+            %     \\ \scriptsize \textbf{Selector}
+            % \end{figure}
+            
+            % \vspace{-0.3cm}
+            
+            % % --- Sequence Image ---
+            % \begin{figure}
+            %     \includegraphics[width=0.7\linewidth]{pictures/sequence_icon.pdf} % Replace with your image
+            %     \\ \scriptsize \textbf{Sequence}
+            % \end{figure}
+            
+            % \vspace{-0.3cm}
+            
+            % % --- Parallel Image ---
+            % \begin{figure}
+            %     \includegraphics[width=0.7\linewidth]{pictures/parallel_icon.pdf} % Replace with your image
+            %     \\ \scriptsize \textbf{Parallel}
+            % \end{figure}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{BT Builder: Parsing \& Sequence Compilation}
+\begin{columns}[T]
+    \begin{column}{0.53\textwidth}
+        \small \textbf{1. Parsing the Plan (\texttt{parse\_pddl\_action})}
+        \scriptsize
+        Cleans raw planner text into structured Python data:
+        \begin{itemize}
+            \item \textbf{Filters Clutter}: Discards comments starting with \texttt{;} (e.g., \texttt{; cost = 2}) and blank lines.
+            \item \textbf{Strips Planner Syntax}: Removes step prefixes (e.g., \texttt{0:}) and outer parentheses \texttt{(...)}.
+            \item \textbf{Extracts Tokens}: Normalizes action name to lowercase and collects arguments:
+            \begin{center}
+                \tiny \texttt{"0: (place yellow\_cube pot)"} $\;\longrightarrow\;$ \texttt{("place", ["yellow\_cube", "pot"])}
+            \end{center}
+        \end{itemize}
+
+        \vspace{0.15cm}
+        \small \textbf{2. Plan to Sequence (\texttt{pddl\_plan\_to\_sequence})}
+        \scriptsize
+        Converts the parsed action list into an executable Behavior Tree Sequence:
+        \begin{itemize}
+            \item \textbf{Skill Dispatch}: Uses \texttt{SKILL\_REGISTRY} to map actions to robot skills (\texttt{"pick"}, \texttt{"place"}).
+            \item \textbf{Argument Binding}: Passes simulator environment and object targets (\texttt{object}, \texttt{asset}).
+            \item \textbf{Why \texttt{memory=True}?}: Ensures progress! Once the robot finishes \texttt{pick}, the sequence remembers it and moves to \texttt{place} without restarting \texttt{pick} on the next tick.
+        \end{itemize}
+    \end{column}
+
+    \begin{column}{0.47\textwidth}
+        \setbeamercolor{treebox}{bg=gray!10,fg=black}
+        \begin{beamercolorbox}[sep=5pt,rounded=true,shadow=true]{treebox}
+            \scriptsize \textbf{Compilation Pipeline Example}
+            \vspace{0.1cm}
+
+            \tiny \textbf{1. Planner Output (Fast Downward)}:
+            \begin{verbatim}
+; plan generated by fast downward
+0: (pick yellow_cube)
+1: (place yellow_cube pot)
+; cost = 2
+            \end{verbatim}
+
+            \vspace{-0.2cm}
+            \centering \tiny $\boldsymbol{\Downarrow}$ \textit{parsed \& compiled into BT} \par
+            \vspace{0.1cm}
+
+            \raggedright \tiny \textbf{2. Executable PyTrees Sequence}:
+            \begin{verbatim}
+[-] pddl_plan_sequence (memory=True)
+ |-- PickUp(object='yellow_cube')
+ `-- PlaceInBin(object='yellow_cube',
+                asset='pot')
+            \end{verbatim}
+        \end{beamercolorbox}
+
+        \vspace{0.15cm}
+        \setbeamercolor{verdictbox}{bg=darkblue,fg=white}
+        \begin{beamercolorbox}[sep=4pt,shadow=true,rounded=true]{verdictbox}
+            \scriptsize \textbf{Design Rationale} \\
+            \tiny Cleanly decouples \textbf{symbolic task planning} (Fast Downward) from the \textbf{physical robot control} (TaskSpaceRRT motion planning).
+        \end{beamercolorbox}
+    \end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{BT Builder: Goal Checking \& Reactive Tree Generation}
+\begin{columns}[T]
+    \begin{column}{0.53\textwidth}
+        \small \textbf{3. Goal-Guarded Wrapper (\texttt{wrap\_with\_goal\_check})}
+        \scriptsize
+        A plain sequence is open-loop. If an object drops, it fails blindly. We wrap it in a reactive fallback loop:
+        \begin{itemize}
+            \item \textbf{Pre-Check (\texttt{GoalCheck\_Pre})}: Verifies if goal is already met before moving. If yes $\to$ succeeds immediately (no redundant actions).
+            \item \textbf{Selector (\texttt{memory=False})}: Re-evaluates continuously on every tick for dynamic preemption.
+            \item \textbf{Post-Check (\texttt{GoalCheck\_Post})}: Confirms physical completion after the sequence finishes.
+            \item \textbf{Retry Loop (\texttt{Retry})}: If the grasp slips and post-check fails, automatically retries the plan up to $N$ times.
+        \end{itemize}
+
+        \vspace{0.15cm}
+        \small \textbf{4. Main Entrypoint (\texttt{build\_bt\_from\_pddl\_plan})}
+        \scriptsize
+        Single builder API providing two execution modes:
+        \begin{itemize}
+            \item \texttt{wrap\_goal\_check=False}: Raw Sequence (open-loop baseline).
+            \item \texttt{wrap\_goal\_check=True}: Self-healing tree with retry loop.
+        \end{itemize}
+    \end{column}
+
+    \begin{column}{0.47\textwidth}
+        \setbeamercolor{treebox}{bg=gray!10,fg=black}
+        \begin{beamercolorbox}[sep=5pt,rounded=true,shadow=true]{treebox}
+            \scriptsize \textbf{Goal-Guarded Tree Architecture}
+            \tiny
+            \begin{verbatim}
+[?] goal_guarded_root (Selector)
+ |-- [>] GoalCheck_Pre (already met?)
+ `-- [R] retry_until_goal (max=10)
+      `-- [->] attempt (Sequence)
+           |-- [->] pddl_plan_sequence
+           |    |-- PickUp(yellow_cube)
+           |    `-- PlaceInBin(yellow_cube->pot)
+           `-- [>] GoalCheck_Post (verified?)
+            \end{verbatim}
+        \end{beamercolorbox}
+
+        \vspace{0.12cm}
+        \setbeamercolor{verdictbox}{bg=darkblue,fg=white}
+        \begin{beamercolorbox}[sep=4pt,shadow=true,rounded=true]{verdictbox}
+            \scriptsize \textbf{Failure Recovery Example (Cube Drop)} \\
+            \tiny
+            \begin{enumerate}
+                \tiny
+                \item Robot picks up cube, but gripper slips mid-air.
+                \item Sequence finishes $\to$ \texttt{GoalCheck\_Post} checks pot.
+                \item Cube is missing $\to$ returns \texttt{FAILURE}.
+                \item \texttt{Retry} catches failure $\to$ re-runs the plan $\to$ task completed successfully!
+            \end{enumerate}
+        \end{beamercolorbox}
+    \end{column}
+\end{columns}
+\end{frame}
+
+
+
+\begin{frame}
+\frametitle{BT Nodes: Skills \& Conditions}
+\begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+        \setbeamercolor{verdictbox}{bg=darkblue,fg=white}
+        \begin{beamercolorbox}[sep=4pt,shadow=true,rounded=true]{verdictbox}
+            \centering \small \textbf{Action Skills (\texttt{skills.py})}
+        \end{beamercolorbox}
+        \vspace{0.15cm}
+        \scriptsize
+        Subclasses of \texttt{py\_trees.behaviour.Behaviour}:
+        \begin{itemize}
+            \item \textbf{Non-Blocking Stepping}: Returns \texttt{RUNNING} while the robot moves, and \texttt{SUCCESS} or \texttt{FAILURE} upon completion.
+            \item \textbf{TaskSpaceRRT Integration}: Computes collision-free SE(3) end-effector trajectories dynamically for the 7-DOF Panda arm.
+            \item \textbf{Operational Primitives}:
+            \begin{itemize}
+                \tiny
+                \item \texttt{MotionPlanningPickUp}: Approach $\to$ Grasp $\to$ Lift.
+                \item \texttt{MotionPlanningPlaceInBin}: Transit $\to$ Lower $\to$ Release $\to$ Retreat.
+            \end{itemize}
+        \end{itemize}
+    \end{column}
+
+    \begin{column}{0.5\textwidth}
+        \setbeamercolor{verdictbox}{bg=darkblue,fg=white}
+        \begin{beamercolorbox}[sep=4pt,shadow=true,rounded=true]{verdictbox}
+            \centering \small \textbf{Condition Nodes (\texttt{conditions.py})}
+        \end{beamercolorbox}
+        \vspace{0.15cm}
+        \scriptsize
+        Dual verification paradigm:
+        \begin{itemize}
+            \item \textbf{PDDLGoalCheck (Symbolic Grounding)}:
+            \begin{itemize}
+                \tiny
+                \item Parses goal formulas from \texttt{problem.pddl}.
+                \item Evaluates simulator predicates deterministically (\texttt{is\_in\_bin}, \texttt{is\_grasped}).
+                \item Fast, deterministic, and zero-latency.
+            \end{itemize}
+            \item \textbf{VisualCheck (VLM Inspection)}:
+            \begin{itemize}
+                \tiny
+                \item Adopts Wake et al. self-prompting.
+                \item Queries VLM (\texttt{vlm\_query\_fn}) on camera frames for open-world semantic validation.
+            \end{itemize}
+        \end{itemize}
+    \end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Reactive Execution \& Runtime Tree}
+\begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+        \small \textbf{Runtime Execution Flow}
+        \scriptsize
+        \begin{enumerate}
+            \item \textbf{Initial Check}: \texttt{GoalCheck\_Pre} runs. If goal holds, the tree returns \texttt{SUCCESS} immediately (no redundant actions).
+            \item \textbf{Execution}: On failure, the Fallback ticks \texttt{retry\_until\_goal} $\to$ \texttt{pddl\_plan\_sequence}.
+            \item \textbf{Closed-Loop Motion}: Each skill executes collision-free RRT trajectories at 20 Hz.
+            \item \textbf{Verification \& Recovery}: \texttt{GoalCheck\_Post} validates final state. If an object is dropped, the Retry decorator triggers re-execution.
+        \end{enumerate}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+        \setbeamercolor{treebox}{bg=gray!10,fg=black}
+        \begin{beamercolorbox}[sep=4pt,rounded=true,shadow=true]{treebox}
+            \scriptsize \textbf{Generated Behavior Tree Structure}
+            \tiny
+            \begin{verbatim}
+[?] goal_guarded_root (Selector)
+ |-- [>] GoalCheck_Pre
+ `-- [R] retry_until_goal (max=3)
+      `-- [->] attempt (Sequence)
+           |-- [->] pddl_plan_sequence
+           |    |-- PickUp(yellow_cube)
+           |    |-- PlaceInBin(yellow_cube->pot)
+           |    |-- PickUp(red_can)
+           |    `-- PlaceInBin(red_can->bin)
+           `-- [>] GoalCheck_Post
+            \end{verbatim}
+        \end{beamercolorbox}
+    \end{column}
+\end{columns}
+\end{frame}
 
 
 \section{Control Layer}

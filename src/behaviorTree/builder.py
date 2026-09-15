@@ -24,19 +24,20 @@ def parse_pddl_action(line: str) -> Optional[tuple[str, List[str]]]:
         "; cost = 2 (unit cost)"  -> None
     """
     clean = line.strip()
-    if not clean or clean.startswith(";"):
+    if not clean or clean.startswith(";"):  # Clean Fast Downward comments
         return None
 
     # Strip step index if present (e.g., "0: (pick obj)")
     if ":" in clean and clean.split(":", 1)[0].isdigit():
         clean = clean.split(":", 1)[1].strip()
 
-    # Strip surrounding parentheses
+    # Strip surrounding parentheses 
     clean = clean.lstrip("(").rstrip(")").strip()
     tokens = clean.split()
     if not tokens:
         return None
 
+    # return the action name (tokens[0]) and the arguments (tokens[1:])
     return tokens[0].lower(), tokens[1:]
 
 
@@ -45,7 +46,8 @@ def pddl_plan_to_sequence(plan: Union[str, List[str]], env=None) -> py_trees.com
     Compile Fast Downward PDDL plan lines into an executable py_trees Sequence.
 
     Example:
-        "(pick yellow_cube)\\n(place yellow_cube pot)"
+        "(pick yellow_cube)
+        (place yellow_cube pot)"
     Yields:
         Sequence [
             MotionPlanningPickUp(object='yellow_cube'),
@@ -64,13 +66,17 @@ def pddl_plan_to_sequence(plan: Union[str, List[str]], env=None) -> py_trees.com
 
         if action == "pick":
             obj = args[0] if args else ""
-            skill_cls = SKILL_REGISTRY["MotionPlanningPickUp"]
+            skill_cls = SKILL_REGISTRY.get("pick", SKILL_REGISTRY.get("MotionPlanningPickUp"))
+            if not skill_cls:
+                raise KeyError("Action 'pick' not found in SKILL_REGISTRY")
             sequence.add_child(skill_cls(name=f"PickUp({obj})", args={"object": obj}, env=env))
 
         elif action == "place":
             obj = args[0] if args else ""
             target = args[1] if len(args) > 1 else "bin"
-            skill_cls = SKILL_REGISTRY["MotionPlanningPlaceInBin"]
+            skill_cls = SKILL_REGISTRY.get("place", SKILL_REGISTRY.get("MotionPlanningPlaceInBin"))
+            if not skill_cls:
+                raise KeyError("Action 'place' not found in SKILL_REGISTRY")
             sequence.add_child(
                 skill_cls(name=f"PlaceInBin({obj}->{target})", args={"object": obj, "asset": target}, env=env)
             )

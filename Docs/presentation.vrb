@@ -1,0 +1,33 @@
+\frametitle{Reactive Execution \& Runtime Tree}
+\begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+        \small \textbf{Runtime Execution Flow}
+        \scriptsize
+        \begin{enumerate}
+            \item \textbf{Initial Check}: \texttt{GoalCheck\_Pre} runs. If goal holds, the tree returns \texttt{SUCCESS} immediately (no redundant actions).
+            \item \textbf{Execution}: On failure, the Fallback ticks \texttt{retry\_until\_goal} $\to$ \texttt{pddl\_plan\_sequence}.
+            \item \textbf{Closed-Loop Motion}: Each skill executes collision-free RRT trajectories at 20 Hz.
+            \item \textbf{Verification \& Recovery}: \texttt{GoalCheck\_Post} validates final state. If an object is dropped, the Retry decorator triggers re-execution.
+        \end{enumerate}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+        \setbeamercolor{treebox}{bg=gray!10,fg=black}
+        \begin{beamercolorbox}[sep=4pt,rounded=true,shadow=true]{treebox}
+            \scriptsize \textbf{Generated Behavior Tree Structure}
+            \tiny
+            \begin{verbatim}
+[?] goal_guarded_root (Selector)
+ |-- [>] GoalCheck_Pre
+ `-- [R] retry_until_goal (max=3)
+      `-- [->] attempt (Sequence)
+           |-- [->] pddl_plan_sequence
+           |    |-- PickUp(yellow_cube)
+           |    |-- PlaceInBin(yellow_cube->pot)
+           |    |-- PickUp(red_can)
+           |    `-- PlaceInBin(red_can->bin)
+           `-- [>] GoalCheck_Post
+            \end{verbatim}
+        \end{beamercolorbox}
+    \end{column}
+\end{columns}
