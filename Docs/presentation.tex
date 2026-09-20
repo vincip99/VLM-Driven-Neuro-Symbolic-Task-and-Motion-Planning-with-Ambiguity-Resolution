@@ -6,7 +6,10 @@
 \usepackage{caption}
 \usepackage{forest}
 \usepackage{tikz}
+\usepackage{float}
 \usetikzlibrary{shapes.geometric, arrows.meta}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 
 
 \usepackage{listings}
@@ -92,11 +95,11 @@
 \end{frame}
 
 % --- What to write ---
-% Planning Layer: Introduction to planning: from classical to ai-planning. VLM: what is, principal architectures, what i've used. Ambiguity resolution. VLM to PDDL pipeline: schema and description.
+% Deliberative Layer: Introduction to planning: from classical to ai-planning. VLM: what is, principal architectures, what i've used. Ambiguity resolution. VLM to PDDL pipeline: schema and description.
 % Executive Layer: introduction. BTs intro. My implementation
 % Control Layer: rrt motion planner. rl and il
 
-\section{Planning Layer}
+\section{Deliberative Layer}
 \begin{frame}
     \frametitle{Neuro-Symbolic Planning architecture}
      
@@ -202,8 +205,19 @@
 \end{frame}
 
 \begin{frame}
-    \frametitle{PDDL planning}
-    
+    \frametitle{Symbolic planning in PDDL}
+    A planning Problem is defined by:
+    \begin{itemize}
+        \item \textbf{Predicates}: Set of grounded states
+        \item \textbf{Actions}: Set of possible moves, defined by preconditions and effects.
+        \item \textbf{Planning Language} $\mathcal{L}$: the set af all possible predicates and variables.
+        \item \textbf{Planning Domain} $\mathcal{D} = (\mathcal{L}, A)$: containing the set of usable predicates (states) and usable actions
+        \item \textbf{Planning Problem} $\mathcal{P} = (\mathcal{D}, I, G)$: build with the domain and the set of initial states (or initial predicates) and the set of goal states (or goal predicates)
+    \end{itemize}
+
+    \textbf{PDDL}, stands for Planning Domain Definition Language, is the gold standards for Classical AI Planning. To solves The planning problem, two main approaches are possible: \textbf{State Space Search} and \textbf{Plan Space Search}.
+
+    To solve the Planning Problem \textbf{Fast Downward} has been used. It is an Heuristic Forward-Chaining State-Space Planner.
 \end{frame}
 
 \begin{frame}
@@ -212,7 +226,7 @@
 
 \section{Executive Layer}
 \begin{frame}
-    \frametitle{Behavior Trees}
+    \frametitle{Executive Layer: Behavior Trees}
     \begin{columns}[T]
         % Left Column: Text and Definitions
         \begin{column}{0.55\textwidth}
@@ -325,14 +339,15 @@
                 ]
             \end{forest}
         }
+        \vspace{0.1cm}
     \end{center}
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{BT Builder: Parsing \& Sequence Compilation}
+\frametitle{BT Builder: Parsing and Sequence Compilation}
 \begin{columns}[T]
     \begin{column}{0.53\textwidth}
-        \small \textbf{1. Parsing the Plan (\texttt{parse\_pddl\_action})}
+        \small \textbf{1. Parsing PDDL Plan (\texttt{parse\_pddl\_action})}
         \scriptsize
         Cleans raw planner text into structured Python data:
         \begin{itemize}
@@ -351,7 +366,6 @@
         \begin{itemize}
             \item \textbf{Skill Dispatch}: Uses \texttt{SKILL\_REGISTRY} to map actions to robot skills (\texttt{"pick"}, \texttt{"place"}).
             \item \textbf{Argument Binding}: Passes simulator environment and object targets (\texttt{object}, \texttt{asset}).
-            \item \textbf{Why \texttt{memory=True}?}: Ensures progress! Once the robot finishes \texttt{pick}, the sequence remembers it and moves to \texttt{place} without restarting \texttt{pick} on the next tick.
         \end{itemize}
     \end{column}
 
@@ -386,14 +400,14 @@
         \setbeamercolor{verdictbox}{bg=darkblue,fg=white}
         \begin{beamercolorbox}[sep=4pt,shadow=true,rounded=true]{verdictbox}
             \scriptsize \textbf{Design Rationale} \\
-            \tiny Cleanly decouples \textbf{symbolic task planning} (Fast Downward) from the \textbf{physical robot control} (TaskSpaceRRT motion planning).
+            \tiny Cleanly decouples \textbf{symbolic task planning} (Fast Downward) from the \textbf{physical robot control} (Motion planning).
         \end{beamercolorbox}
     \end{column}
 \end{columns}
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{BT Builder: Goal Checking \& Reactive Tree Generation}
+\frametitle{BT Builder: Goal Checking and Reactive Tree Generation}
 \begin{columns}[T]
     \begin{column}{0.53\textwidth}
         \small \textbf{3. Goal-Guarded Wrapper (\texttt{wrap\_with\_goal\_check})}
@@ -540,8 +554,395 @@
 
 
 \section{Control Layer}
+\begin{frame}
+    \frametitle{Reactive Layer: Motion and Path Planning}
+    \begin{columns}[T]
+    % Left Column: Architecture Context
+    \begin{column}{0.5\textwidth}
+        \small \textbf{Reactive Layer Roles}
+        \scriptsize
+        \begin{itemize}
+            \item \textbf{Symbolic-to-Continuous Grounding}: Translates discrete BT skills (\texttt{PickUp}, \texttt{PlaceInBin}) into continuous robot motion.
+            \item \textbf{Perception}: Accounts for physical geometry, obstacles, and contact dynamics ignored by PDDL.
+            \item \textbf{Motor Control}: Operates at 20\,Hz with real-time state feedback from MuJoCo Simulator Environment.
+        \end{itemize}
+        \vspace{0.25cm}
+        \setbeamercolor{verdictbox}{bg=darkblue,fg=white}
+        \begin{beamercolorbox}[sep=4pt,shadow=true,rounded=true]{verdictbox}
+            \centering \small \textbf{Hierarchical Motion Decomposition}
+            \vspace{0.05cm}
+            \raggedright
+            \tiny
+            \begin{itemize}
+                \setlength\itemsep{0.25em}
+                \item \textbf{1. Path Planning (Task Space RRT)}: Solves pure geometric obstacle avoidance in free space ($\mathbb{R}^3$).
+                \item \textbf{2. Trajectory Tracking}: Closed-loop proportional tracking of Cartesian waypoints $[x_1, ..., x_n]$ generated by the RRT.
+                \item \textbf{3. Manipulation (PPO / Heuristic)}: Governs fine contact dynamics, compliant grasping, and lifting.
+                \item \textbf{4. Low Level Controller (OSC)}: Takes as input the cartesian velocities from the Tracking and Manipulation modules and output the joint torques $\tau_i$ needed to control the robot. 
+            \end{itemize}
+        \end{beamercolorbox}
+    \end{column}
+    % Right Column: Conceptual Flow / Visual Breakdown
+    \begin{column}{0.5\textwidth}
+        \vspace{0.6cm}
+        \includegraphics[width=\linewidth]{pictures/tamp.pdf}
+    \end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitle{Path Planning: RRT}
+    Rapidly Random Trees (RRT) is a Probabilistic Path Planning method used to efficiently construct a path in continuous spaces.
+    \begin{algorithm}[H]
+        \captionsetup{font=scriptsize}
+        \scriptsize
+        \caption{Goal Oriented RRT Algorithm}
+        \begin{algorithmic}[1]
+            \State $G.\text{init}(x_{\text{start}})$
+            \For{$i = 1 \dots K$}
+                \State $p = \text{UniformRandom}(0, 1)$ 
+                \If{$p \leq p_{\text{goal}}$}
+                    \State $x_{\text{rand}} \gets x_{\text{goal}}$
+                \Else
+                    \State $x_{\text{rand}} \gets \text{RandPose}()$
+                \EndIf
+                \State $x_{\text{nearest}} \gets \text{NearestVertex}(x_{\text{rand}}, G)$
+                \State $x_{\text{new}} \gets \text{NewConf}(x_{\text{nearest}}, x_{\text{rand}}, \Delta x)$
+                \If{\text{CollisionFree}$(x_{\text{nearest}}, x_{\text{new}})$}
+                    \State $G.\text{add\_vertex}(x_{\text{new}})$
+                    \State $G.\text{add\_edge}(x_{\text{nearest}}, x_{\text{new}})$
+                    \If{$x_{\text{new}} \in X_{\text{goal}}$}
+                        \Return \text{Path Found}
+                    \EndIf
+                \EndIf
+            \EndFor
+            \State \Return $G$
+        \end{algorithmic}
+    \end{algorithm}
+    The goal oriented version samples the goal point with a given probability $p$ while a random point with probability $1-p$. 
+\end{frame}
+
+\begin{frame}
+    \frametitle{Trajectory Tracking}
+    \begin{itemize}
+        \item \textbf{Cartesian Setpoints:} 
+        The waypoints generated by the task-space RRT are Cartesian poses used as setpoints for a \textbf{Proportional (P) Controller}.
+        \item \textbf{Tracking Error:} 
+        At each time step, the position error is defined as:
+        \[
+            \mathbf{e} = \mathbf{p}_{\text{target}} - \mathbf{p}_{\text{EF}}
+        \]
+        \item \textbf{Control Law:} 
+        The controller outputs velocity commands bounded by a maximum speed:
+        \[
+            \mathbf{v}_{\text{cmd}} = \operatorname{clip}(K_p \mathbf{e},\, -v_{\max},\, v_{\max})
+        \]
+        which are sent to the underlying operational space controller.
+        \item \textbf{Application:} 
+        Used specifically during the \textbf{approach phase} in the pick action and during the \textbf{place action}. The place skill itself is completely based on the RRT planner and the trajectory tracker, while the pick skill is composed by more modules and need further explaination.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Manipulation: Heuristic Approach}
+    \small Consists of a \textbf{Staged FSM}, that executes the following phases:
+    \begin{columns}
+        \begin{column}{0.5\textwidth}
+            \footnotesize
+            \begin{enumerate}
+                \item \textbf{RRT Planning:}
+                Traverse collision-free waypoints to hover pose (\texttt{== end\_pose}).
+                
+                \item \textbf{Descent Phase:}
+                Descend vertically until reaching grasp height (\texttt{z $\le$ z\_tol}).   
+            \end{enumerate}
+        \end{column}
+
+        \begin{column}{0.5\textwidth}
+            \footnotesize
+            \begin{enumerate}
+                \item[3.] \textbf{Grasp Phase:}
+                Actuate gripper firmly for set duration (\texttt{t > t\_grasp}).
+                
+                \item[4.] \textbf{Lift Phase:}
+                Elevate object to safe height to verify pick. If it fails, it will retry from the Descent phase.
+            \end{enumerate}
+        \end{column}
+    \end{columns}
+    \begin{figure}
+        \includegraphics[width=0.83\linewidth]{pictures/fsm_tamp.pdf}
+    \end{figure}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Proximal Policy Optimization}
+    Proximal Policy Optimization is an on-policy actor-critic Reinforcement Learning method. PPO updates policy parameters $\theta_{k+1}$ by maximizing the \textbf{Clipped Surrogate Objective}:
+    \[
+    L^{\text{CLIP}}(\theta) = \hat{\mathbb{E}}_t \left[ \min \left( r_t(\theta)\hat{A}_t, \; \operatorname{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon)\hat{A}_t \right) \right]
+    \]
+    
+    where the probability ratio is defined as:
+    \[
+    r_t(\theta) = \frac{\pi_\theta(a_t \mid s_t)}{\pi_{\theta_k}(a_t \mid s_t)}
+    \]
+
+    \begin{itemize}
+        \item \textbf{Clipped Objective:} The hyperparameter $\epsilon \approx 0.2$ penalizes moving $r_t(\theta)$ outside $[1-\epsilon, 1+\epsilon]$, preventing destructively large policy updates.
+        \item \textbf{Actor-Critic Architecture:} Jointly optimizes a policy network $\pi_\theta(a|s)$ and a state-value baseline $V_\phi(s)$ using Generalized Advantage Estimation (GAE).
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Manipulation: PPO Approach}
+    \small
+    \texttt{TaskSpaceRRT} provides coarse global navigation to a pre-grasp hover pose ($\sim 18\,\text{cm}$ above the object). The \textbf{PPO policy} then takes over using a minimal, translation-invariant \textbf{11D observation vector}:
+    
+    \vspace{0.15cm}
+    \centering
+    $\mathbf{o}_t = \Big[\; \underbrace{\Delta\mathbf{p}}_{\mathbb{R}^3},\;\; \underbrace{\mathbf{q}_{\text{grip}}}_{\mathbb{R}^2},\;\; \underbrace{\dot{\mathbf{q}}_{\text{grip}}}_{\mathbb{R}^2},\;\; \underbrace{z_{\text{rel}}^{\text{EEF}}}_{\mathbb{R}^1},\;\; \underbrace{\Delta z_{\text{obj}}}_{\mathbb{R}^1},\;\; \underbrace{c_{\text{grasp}}}_{\{0,1\}},\;\; \underbrace{m_{\text{geom}}}_{\{0,1\}} \;\Big]^\top \in \mathbb{R}^{11}$
+    \vspace{0.2cm}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \begin{block}{Kinematics \& Spatial Relations}
+                \begin{itemize}\footnotesize
+                    \item $\Delta\mathbf{p} = \mathbf{p}_{\text{obj}} - \mathbf{p}_{\text{EEF}}$: 3D relative vector (translation invariance across table).
+                    \item $z_{\text{rel}}^{\text{EEF}} = p_{\text{EEF}, z} - z_{\text{table}}$: Table clearance to avoid surface collisions.
+                    \item $\Delta z_{\text{obj}} = p_{\text{obj}, z} - p_{\text{obj}, z}^{(0)}$: Vertical displacement measuring lift progress.
+                \end{itemize}
+            \end{block}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \begin{block}{Gripper State \& Morphology}
+                \begin{itemize}\footnotesize
+                    \item $\mathbf{q}_{\text{grip}}, \dot{\mathbf{q}}_{\text{grip}}$: Left/right finger joint positions and velocities (contact stall detection).
+                    \item $c_{\text{grasp}} \in \{0, 1\}$: Bilateral force-closure flag (Robosuite contact normal check).
+                    \item $m_{\text{geom}} \in \{0, 1\}$: Shape token ($0$: cube, $1$: can) enabling multi-geometry conditioning.
+                \end{itemize}
+            \end{block}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Manipulation: Shaped Reward Formulation}
+    \small
+    The agent is trained with a multi-stage continuous-discrete reward guiding the transition from approach $\to$ grasp $\to$ lift:
+    \begin{equation*}
+        R_t = r_{\text{reach}} + r_{\text{grip}} + r_{\text{grasp}} + r_{\text{lift}} - c_{\text{step}} + r_{\text{terminal}}
+    \end{equation*}
+    \vspace{-0.2cm}
+    \begin{columns}[T]
+        \begin{column}{0.50\textwidth}
+            \begin{block}{Continuous Shaping Terms}
+                \begin{itemize}\scriptsize
+                    \item \textbf{Smooth Reaching ($d = \|\Delta\mathbf{p}\|_2$):}
+                    \newline $r_{\text{reach}} = 1.0 - \tanh(10.0 \cdot d)$
+                    \item \textbf{Grasp Maintenance:}
+                    \newline $r_{\text{grasp}} = 2.0 \cdot \mathbb{I}(\text{grasped})$
+                    \item \textbf{Conditioned Vertical Lift:}
+                    \newline $r_{\text{lift}} = 20.0 \cdot \max(0, \Delta z_{\text{obj}}) \cdot \mathbb{I}(\text{grasped})$
+                    \newline \textit{(Avoids lifting with an empty gripper)}
+                    \item \textbf{Alive Cost:} $c_{\text{step}} = 0.01$ (incentivizes speed)
+                \end{itemize}
+            \end{block}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \begin{block}{Action Shaping \& Terminals}
+                \begin{itemize}\scriptsize
+                    \item \textbf{Gripper Timing Incentive $r_{\text{grip}}$:}
+                    $$r_{\text{grip}} = \begin{cases}
+                        +0.5 & \text{if } d < 4\,\text{cm} \land a_g > 0 \\
+                        -0.25 & \text{if } d < 4\,\text{cm} \land a_g \le 0 \\
+                        -0.2 & \text{if } d \ge 4\,\text{cm} \land a_g > 0.2 \\
+                        0 & \text{otherwise}
+                    \end{cases}$$
+                    \textit{Prevents premature closure before alignment.}
+                    \item \textbf{Terminal Sparse Rewards:}
+                    \newline $+15.0$ if $\Delta z_{\text{obj}} \ge 6\,\text{cm} \land \text{grasped}$ (\textbf{Success})
+                    \newline $-2.0$ if $p_{\text{obj}, z} < z_{\text{table}} - 4\,\text{cm}$ (\textbf{Drop})
+                \end{itemize}
+            \end{block}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+
+\begin{frame}{Manipulation: PPO Training \& Evaluation}
+    \begin{center}
+        \includegraphics[width=0.98\textwidth]{pictures/ppo_training_results.pdf}
+    \end{center}
+    \vspace{-0.3cm}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \begin{block}{Training Progression (25k Steps)}
+                \begin{itemize}\scriptsize
+                    \item \textbf{Exploration Phase:} High variance in initial rollouts as the policy explores grasp stability.
+                    \item \textbf{High-Return Peaks ($>150$):} Successful grasp + vertical lift + sparse completion bonus ($+15$).
+                \end{itemize}
+            \end{block}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \begin{block}{Deterministic Evaluation}
+                \begin{itemize}\scriptsize
+                    \item Evaluated every $5{,}000$ steps over 10 test rollouts.
+                    \item Greedy policy achieves consistent ascent, climbing from initial hover ($\sim 36$) to peak performance ($\sim 73$).
+                \end{itemize}
+            \end{block}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Manipulation: Why Behavioral Cloning Warm-Start?}
+    \begin{columns}[c]
+        \begin{column}{0.54\textwidth}
+            \includegraphics[width=\textwidth]{pictures/ppo_bc_ablation.pdf}
+        \end{column}
+        \begin{column}{0.45\textwidth}
+            \begin{block}{Algorithmic Oracle Demonstrations}
+                \begin{itemize}\scriptsize
+                    \item Generated via a closed-loop 3-stage state-machine using simulation ground-truth poses.
+                    \item $100$ demos ($\sim 3{,}000$ transitions) pre-trained for 150 epochs via supervised MSE loss.
+                \end{itemize}
+            \end{block}
+            \begin{block}{Key Empirical Findings}
+                \begin{itemize}\scriptsize
+                    \item \textbf{Pure RL (120k steps):} Gets stuck in the \textit{"reaching local minimum"} ($\approx 29$ reward), never discovering the precise descent-grasp-lift sequence.
+                    \item \textbf{BC Warm-Start (25k steps):} Initializes policy in the basin of attraction, achieving immediate task competence in $\mathbf{5\times}$ fewer steps.
+                \end{itemize}
+            \end{block}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Manipulation: Heuristic vs PPO Comparison}
+    \begin{center}
+        \includegraphics[width=0.98\textwidth]{pictures/heuristic_vs_ppo.pdf}
+    \end{center}
+    \vspace{-0.3cm}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \begin{block}{Cube Manipulation Performance}
+                \begin{itemize}\scriptsize
+                    \item \textbf{High Reliability:} PPO achieves \textbf{82.5\%} success rate (vs. 100\% analytical oracle) using local relative observations.
+                    \item \textbf{Micro-Trajectory Parity:} Identical physical motion speed: $\mathbf{1.71\,\text{s}}$ (34.1 steps) vs $\mathbf{1.70\,\text{s}}$ (34.0 steps).
+                    \item \textbf{Eliminates Dwell Timers:} The heuristic forces a conservative $\mathbf{2.0\,\text{s}}$ ($40$ ticks) pause before lifting; PPO lifts instantly upon contact.
+                \end{itemize}
+            \end{block}
+        \end{column}
+
+        \begin{column}{0.48\textwidth}
+            \begin{block}{Trade-Offs \& Hybrid Synergy}
+                \begin{itemize}\scriptsize
+                    \item \textbf{Dynamic Compliance:} PPO modulates continuous velocities based on real-time force closure rather than rigid fixed gains ($K_p = 10$).
+                    \item \textbf{Privileged vs Reactive:} Heuristic requires exact object coordinates; PPO relies only on local $\Delta\mathbf{p}$ and joint kinematics.
+                    \item \textbf{Safety Guard:} Hybrid pick node falls back to heuristic if step budget ($\le 90$) expires.
+                \end{itemize}
+            \end{block}
+        \end{column}
+    \end{columns}
+\end{frame}
+
 
 \section{Setup and Experimental Results}
+\begin{frame}{Experimental Setup: Simulation Environment}
+    \begin{columns}[c]
+        \begin{column}{0.54\textwidth}
+            \includegraphics[width=\textwidth]{pictures/simulation_env_dual_cam.png}
+        \end{column}
+        \begin{column}{0.45\textwidth}
+            \begin{block}{Robosuite TaskSorting Arena}
+                \begin{itemize}\scriptsize
+                    \item \textbf{Robot:} 7-DoF Franka Emika Panda with parallel-jaw gripper ($20\,\text{Hz}$ OSC control).
+                    \item \textbf{Physics:} MuJoCo headless physics engine with compliant contact dynamics.
+                \end{itemize}
+            \end{block}
+            \begin{block}{Sensory \& Tabletop Assets}
+                \begin{itemize}\scriptsize
+                    \item \textbf{Dual Viewpoints:} Orthographic \textit{top-down} (VLM grounding) + perspective \textit{frontview} (monitoring).
+                    \item \textbf{Objects:} 5 pickable items (yellow/purple cubes, red/blue/green cans).
+                    \item \textbf{Containers:} Sorting bin ($30\times 30\,\text{cm}$) + handled pot (collision obstacles).
+                \end{itemize}
+            \end{block}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+
+\begin{frame}{End-to-End TAMP Pipeline Execution}
+    \small
+    \textbf{Task Mission:} \textit{``Put the red can in the sorting bin, then put the yellow cube in the pot, then put the blue can in the sorting bin.''}
+    \vspace{0.15cm}
+    \begin{columns}[T]
+        \begin{column}{0.32\textwidth}
+            \begin{block}{1. Perception \& Plan}
+                \begin{itemize}\scriptsize
+                    \item \textbf{Qwen 2.5-VL}: Resolves object locations from top-down frame.
+                    \item \textbf{Llama 3}: Synthesizes initial/goal PDDL predicates.
+                    \item \textbf{Fast Downward}: Generates $6$-step symbolic action plan in $<0.1\,\text{s}$.
+                \end{itemize}
+            \end{block}
+        \end{column}
+        \begin{column}{0.34\textwidth}
+            \begin{block}{2. BT Compilation}
+                \begin{itemize}\scriptsize
+                    \item Compiled into reactive \texttt{py\_trees} structure.
+                    \item Encapsulates pre-conditions, action sequences, and fallback recovery nodes.
+                    \item Continuous state tick monitoring at $20\,\text{Hz}$.
+                \end{itemize}
+            \end{block}
+        \end{column}
+        \begin{column}{0.32\textwidth}
+            \begin{block}{3. Motion \& Control}
+                \begin{itemize}\scriptsize
+                    \item \textbf{TaskSpaceRRT}: Computes collision-free transit paths ($\sim 30\,\text{ms}$).
+                    \item \textbf{Hybrid PPO}: Compliant grasp and lift ($\approx 1.7\,\text{s}$).
+                    \item \textbf{Placement}: Waypoint tracking to bin/pot.
+                \end{itemize}
+            \end{block}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Experimental Results: Subsystem Performance}
+    \small
+    Quantitative evaluation across end-to-end multi-object sorting missions:
+    \vspace{0.15cm}
+    \centering
+    \scriptsize
+    \begin{tabular}{lcccc}
+        \hline
+        \textbf{Pipeline Layer} & \textbf{Module / Algorithm} & \textbf{Mean Latency} & \textbf{Success Rate} \\
+        \hline
+        Visual Grounding & Qwen 2.5-VL (3B) & $1.25\,\text{s}$ & $100\%$ \\
+        PDDL Formulation & Llama 3 (8B) & $1.80\,\text{s}$ & $100\%$ \\
+        Symbolic Planning & Fast Downward ($A^*$) & $\mathbf{0.07\,\text{s}}$ & $100\%$ \\
+        Motion Planning & TaskSpaceRRT & $\mathbf{0.03\,\text{s}}$ & $100\%$ \\
+        Manipulation (Pick) & Hybrid PPO Policy & $1.71\,\text{s}$ & $88\%$ (PPO) \\
+        Fallback Execution & Deterministic Staged & $1.70\,\text{s}$ & $100\%$ (Fallback) \\
+        \hline
+        \textbf{End-to-End System} & \textbf{Complete Architecture} & \textbf{Total Mission} & $\mathbf{100\%}$ \\
+        \hline
+    \end{tabular}
+    \vspace{0.25cm}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \begin{block}{Key Findings}
+                \begin{itemize}\scriptsize
+                    \item Symbolic \& motion planning combined require \textbf{$<0.1\,\text{s}$}, enabling agile replanning.
+                    \item Zero collisions observed with container walls across all transit trajectories.
+                \end{itemize}
+            \end{block}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \begin{block}{Execution Guarantees}
+                \begin{itemize}\scriptsize
+                    \item The hybrid RL-fallback mechanism ensures zero mission halts on manipulation failures.
+                    \item Modular design decouples high-level task planning from local contact mechanics.
+                \end{itemize}
+            \end{block}
+        \end{column}
+    \end{columns}
+\end{frame}
 
 \section{Conclusion}
 

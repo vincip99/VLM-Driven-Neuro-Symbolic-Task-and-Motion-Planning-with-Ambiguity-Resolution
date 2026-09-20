@@ -1,15 +1,27 @@
 """
 Action nodes (Skills) for Behavior Tree robotic execution.
-Provides closed-loop manipulation primitives using TaskSpaceRRT motion planning.
+Provides closed-loop manipulation primitives using TaskSpaceRRT motion planning
+and Hybrid PPO Micro-Manipulation policies.
 """
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Type
+import os
+from typing import Any, Dict, Optional, Type
+
+# Eagerly import torch and PPO at module level to initialize PyTorch/CUDA runtime
+# BEFORE any MuJoCo OpenGL/EGL offscreen rendering context is constructed.
+try:
+    import torch
+    from stable_baselines3 import PPO
+    _PPO_AVAILABLE = True
+except ImportError:
+    _PPO_AVAILABLE = False
 
 import numpy as np
 import py_trees
 
+from src.envs import extract_ppo_obs
 from .motion_planner import TaskSpaceRRT
 
 log = logging.getLogger(__name__)
@@ -84,9 +96,9 @@ class Skill(py_trees.behaviour.Behaviour):
 
 
 # ---------------------------------------------------------------------------
-# Pick-Up Skill (TaskSpaceRRT Motion Planning)
+# Pick-Up Skill (Heuristic TaskSpaceRRT Motion Planning)
 # ---------------------------------------------------------------------------
-@register_skill("pick")
+@register_skill("heuristic_pick")
 class MotionPlanningPickUpSkill(Skill):
     """
     Picks up an object using collision-free TaskSpaceRRT navigation
@@ -228,6 +240,198 @@ class MotionPlanningPickUpSkill(Skill):
             action[:3] = np.clip(self.kp * delta, -0.35, 0.35)
 
         return action
+
+
+# ---------------------------------------------------------------------------
+# Hybrid Pick-Up Skill (TaskSpaceRRT Macro-Navigation + PPO Micro-Manipulation)
+# ---------------------------------------------------------------------------
+@register_skill("pick")
+@register_skill("hybrid_ppo_pick")
+class HybridPPOPickUpSkill(MotionPlanningPickUpSkill):
+    """
+    Hybrid Pick-Up Skill combining Macro-Navigation via TaskSpaceRRT and
+    Micro-Manipulation via a trained PPO Reinforcement Learning Policy.
+
+    Execution Lifecycle:
+    1. 'follow_path': TaskSpaceRRT navigates collision-free from arbitrary start
+       pose to a pre-grasp hover pose (~18cm directly above target object).
+    2. 'ppo_lift': Once at the hover pose, the trained PPO policy takes over,
+       processing the 11D observation vector (relative EEF-object translation,
+       finger states, cylinder vs cube flag) and issuing 4D compliant commands
+       (dx, dy, dz, gripper) to descend, grasp, and lift the object.
+    3. Automatic Heuristic Fallback: If PPO model checkpoint is not found, or if
+       PPO is disabled via env/args, or if PPO exceeds its step budget without
+       lifting, the skill seamlessly falls back to the deterministic staged
+       controller (descend -> grasp -> lift).
+    """
+
+    _cached_model = None
+    _cached_model_path: Optional[str] = None
+
+    def __init__(self, name: str, args: Dict[str, Any], env=None, max_steps: int = 400):
+        super().__init__(name=name, args=args, env=env, max_steps=max_steps)
+        self.use_ppo = bool(self.args.get("use_ppo", True))
+        self.model_path = self.args.get("model_path", "models/ppo_hybrid_lift.zip")
+        self._ppo_steps = 0
+        self._max_ppo_steps = 90
+
+    @classmethod
+    def get_model(cls, model_path: str):
+        if cls._cached_model is not None and cls._cached_model_path == model_path:
+            return cls._cached_model
+
+        candidates = [
+            model_path,
+            os.path.join(os.path.dirname(model_path), "best_model", "best_model.zip"),
+            os.path.abspath(model_path),
+        ]
+        found_path = None
+        for c in candidates:
+            if c and os.path.isfile(c):
+                found_path = c
+                break
+
+        if found_path is None:
+            return None
+
+        if not _PPO_AVAILABLE:
+            log.warning("stable_baselines3 is not available in environment.")
+            return None
+
+        try:
+            cls._cached_model = PPO.load(found_path, device="cpu")
+            cls._cached_model_path = model_path
+            log.info(f"Loaded PPO checkpoint from {found_path}")
+            return cls._cached_model
+        except Exception as e:
+            log.warning(f"Failed loading PPO model from {found_path}: {e}")
+            return None
+
+    def initialise(self):
+        super().initialise()
+        self._ppo_steps = 0
+        # Check if env has a global use_ppo flag or model path override
+        if self.env is not None and hasattr(self.env, "use_ppo"):
+            self.use_ppo = bool(self.env.use_ppo)
+        if self.env is not None and hasattr(self.env, "ppo_model_path") and self.env.ppo_model_path:
+            self.model_path = str(self.env.ppo_model_path)
+
+    def is_done(self, obs: dict) -> bool:
+        target_obj = self.args.get("object", self.args.get("ob", ""))
+        body_id = self.env._resolve_body_id(target_obj) if self.env else None
+
+        if body_id is not None:
+            obj_z = self.env._base_env.sim.data.body_xpos[body_id][2]
+            init_z = getattr(self, "_initial_obj_z", self.env._table_height)
+            # Successfully lifted if higher than initial position
+            if obj_z > init_z + 0.035 and self.env.is_grasped(target_obj):
+                return True
+            if obj_z > init_z + 0.06:
+                return True
+
+        if self.stage in ["lift", "descend", "grasp"]:
+            return super().is_done(obs)
+
+        return False
+
+    def _get_action(self, obs: dict) -> np.ndarray:
+        target_obj = self.args.get("object", self.args.get("ob", ""))
+        body_id = self.env._resolve_body_id(target_obj) if self.env else None
+        if body_id is None:
+            return np.zeros(7)
+
+        eef_site_id = self.env._base_env.robots[0].eef_site_id["right"]
+        eef_pos = self.env._base_env.sim.data.site_xpos[eef_site_id]
+        obj_pos = self.env._base_env.sim.data.body_xpos[body_id]
+
+        # ── Stage 1: Traverse RRT Waypoints to Pre-Grasp Hover Pose ─
+        if self.stage == "follow_path":
+            self._wp_timer += 1
+            if self.current_wp_idx < len(self.path):
+                target_pos = self.path[self.current_wp_idx]
+                if np.linalg.norm(eef_pos - target_pos) < 0.04 or self._wp_timer > 30:
+                    self.current_wp_idx += 1
+                    self._wp_timer = 0
+            else:
+                # Reached pre-grasp hover pose: check if PPO should take over
+                ppo_model = self.get_model(self.model_path) if self.use_ppo else None
+                if ppo_model is not None:
+                    self.stage = "ppo_lift"
+                    self._ppo_steps = 0
+                    self.logger.info(f"[{self.name}] Pre-grasp hover reached. Handing over to PPO micro-policy.")
+                else:
+                    self.stage = "descend"
+                    self.logger.info(f"[{self.name}] PPO unavailable or disabled. Using heuristic descend-grasp-lift.")
+                target_pos = eef_pos
+
+            delta = target_pos - eef_pos
+            action = np.zeros(7)
+            action[:3] = np.clip(self.kp * delta, -self.max_speed, self.max_speed)
+            action[6] = -1.0  # Open gripper
+            return action
+
+        # ── Stage 2: PPO Micro-Manipulation (Compliant Descent, Grasp, Lift) ─
+        elif self.stage == "ppo_lift":
+            self._ppo_steps += 1
+            # Check timeout / fallback to deterministic controller
+            if self._ppo_steps > self._max_ppo_steps:
+                self.logger.warning(
+                    f"[{self.name}] PPO step budget ({self._max_ppo_steps}) reached. Falling back to heuristic controller."
+                )
+                self.stage = "descend"
+                self._descend_timer = 0
+                return super()._get_action(obs)
+
+            # Check if grasp achieved and lifted
+            obj_z = self.env._base_env.sim.data.body_xpos[body_id][2]
+            init_z = getattr(self, "_initial_obj_z", self.env._table_height)
+            if obj_z > init_z + 0.035 and self.env.is_grasped(target_obj):
+                # Object successfully grasped and lifted! Hold steady
+                action = np.zeros(7)
+                action[2] = 0.2  # gentle upward hold
+                action[6] = 1.0  # hold closed
+                return action
+
+            # Extract 11D observation vector
+            sim = self.env._base_env.sim
+            robot = self.env._base_env.robots[0]
+            gripper = robot.gripper["right"]
+            gripper_joint_ids = [sim.model.joint_name2id(j) for j in gripper.joints]
+            gripper_qpos = np.array([sim.data.qpos[j] for j in gripper_joint_ids], dtype=np.float32)
+            gripper_qvel = np.array([sim.data.qvel[j] for j in gripper_joint_ids], dtype=np.float32)
+            table_z = getattr(self.env, "_table_height", 0.8)
+            target_geom = getattr(self.env._base_env, target_obj, None)
+            is_contact_grasped = bool(self.env._base_env._check_grasp(gripper=gripper, object_geoms=target_geom)) if target_geom else False
+            is_grasped = is_contact_grasped or bool(self.env.is_grasped(target_obj))
+            is_cylinder = "can" in target_obj
+
+            ppo_obs = extract_ppo_obs(
+                sim_data=sim.data,
+                eef_site_id=eef_site_id,
+                obj_body_id=body_id,
+                gripper_qpos=gripper_qpos,
+                gripper_qvel=gripper_qvel,
+                table_z=table_z,
+                initial_obj_z=self._initial_obj_z,
+                is_grasped=is_grasped,
+                is_cylinder=is_cylinder,
+            )
+
+            model = self.get_model(self.model_path)
+            if model is None:
+                self.stage = "descend"
+                return super()._get_action(obs)
+
+            action_4d, _ = model.predict(ppo_obs, deterministic=True)
+            action = np.zeros(7)
+            action[:3] = np.clip(action_4d[:3], -1.0, 1.0)
+            action[3:6] = 0.0
+            action[6] = 1.0 if action_4d[3] > 0.0 else -1.0
+            return action
+
+        # ── Fallback Stages: descend, grasp, lift via superclass controller ─
+        else:
+            return super()._get_action(obs)
 
 
 # ---------------------------------------------------------------------------

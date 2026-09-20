@@ -1,3 +1,5 @@
 \babel@toc {english}{}\relax 
-\beamer@sectionintoc {1}{Planning Layer}{3}{0}{1}
+\beamer@sectionintoc {1}{Deliberative Layer}{3}{0}{1}
 \beamer@sectionintoc {2}{Executive Layer}{10}{0}{2}
+\beamer@sectionintoc {3}{Control Layer}{16}{0}{3}
+\beamer@sectionintoc {4}{Setup and Experimental Results}{26}{0}{4}

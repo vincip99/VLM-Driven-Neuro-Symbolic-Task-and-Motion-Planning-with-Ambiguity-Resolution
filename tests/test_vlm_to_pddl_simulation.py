@@ -19,6 +19,11 @@ import time
 import re
 from datetime import datetime
 import argparse
+
+# Eagerly import torch and PPO before any OpenGL/EGL context is created by MuJoCo/robosuite
+import torch
+from stable_baselines3 import PPO
+
 import cv2
 import imageio
 import numpy as np
@@ -79,6 +84,17 @@ def parse_args():
         type=str,
         default="behavior_tree",
         help="Custom filename for the rendered Behavior Tree image in the images folder (default: behavior_tree)",
+    )
+    parser.add_argument(
+        "--no-ppo",
+        action="store_true",
+        help="Disable PPO micro-manipulation policy and use pure heuristic descend-grasp-lift",
+    )
+    parser.add_argument(
+        "--ppo-model-path",
+        type=str,
+        default="models/ppo_hybrid_lift.zip",
+        help="Path to trained PPO model checkpoint for hybrid pick skill",
     )
     return parser.parse_args()
 
@@ -242,6 +258,17 @@ def main():
     # -------------------------------------------------------------------------
     print("\n[Step 6] Compiling PDDL Plan into Behavior Tree...")
     env_adapter = RobosuiteEnvAdapter(raw_env=env)
+    env_adapter.use_ppo = not args.no_ppo
+    env_adapter.ppo_model_path = args.ppo_model_path
+    if env_adapter.use_ppo:
+        from src.behaviorTree.skills import HybridPPOPickUpSkill
+        cached = HybridPPOPickUpSkill.get_model(env_adapter.ppo_model_path)
+        if cached is not None:
+            print(f"  - Pre-cached PPO model: {env_adapter.ppo_model_path}")
+        else:
+            print(f"  - Warning: PPO model checkpoint not found at {env_adapter.ppo_model_path}")
+    pick_mode = "Hybrid TaskSpaceRRT + PPO" if env_adapter.use_ppo else "Pure Heuristic (MotionPlanning)"
+    print(f"Pick Skill Architecture: {pick_mode}")
 
     root_node = build_bt_from_pddl_plan(
         plan=plan,
@@ -284,8 +311,14 @@ def main():
     video_path = os.path.join(video_dir, video_filename)
     print(f"  - Target video recording path: {video_path}")
 
-    # Initialize high-quality MP4 video writer (20 FPS)
-    writer = imageio.get_writer(video_path, fps=20)
+    # Initialize high-quality MP4 video writer with faststart and yuv420p for universal player compatibility
+    writer = imageio.get_writer(
+        video_path,
+        fps=20,
+        codec="libx264",
+        pixelformat="yuv420p",
+        ffmpeg_params=["-movflags", "+faststart"],
+    )
 
     window_name = "VLM Robot Execution: Frontal | Top-Down (TaskSpaceRRT)"
     gui_active = False
@@ -300,86 +333,90 @@ def main():
     tick_count = 0
     max_ticks = args.max_ticks
 
-    while tick_count < max_ticks:
-        bt_tree.tick()
-        status = root_node.status
+    try:
+        while tick_count < max_ticks:
+            bt_tree.tick()
+            status = root_node.status
 
-        # Render frontview and top_down_vlm cameras
-        try:
-            frame_front = env.sim.render(height=512, width=512, camera_name="frontview")
-            frame_top = env.sim.render(height=512, width=512, camera_name="top_down_vlm")
+            # Render frontview and top_down_vlm cameras
+            try:
+                frame_front = env.sim.render(height=512, width=512, camera_name="frontview")
+                frame_top = env.sim.render(height=512, width=512, camera_name="top_down_vlm")
 
-            frame_front_rgb = np.flipud(frame_front)
-            frame_top_rgb = np.flipud(frame_top)
+                frame_front_rgb = np.ascontiguousarray(np.flipud(frame_front))
+                frame_top_rgb = np.ascontiguousarray(np.flipud(frame_top))
 
-            # Combine cameras side-by-side (1024x512)
-            combined_rgb = np.hstack([frame_front_rgb, frame_top_rgb])
-            combined_bgr = cv2.cvtColor(combined_rgb, cv2.COLOR_RGB2BGR)
+                # Combine cameras side-by-side (1024x512)
+                combined_rgb = np.hstack([frame_front_rgb, frame_top_rgb])
+                combined_bgr = cv2.cvtColor(combined_rgb, cv2.COLOR_RGB2BGR)
 
-            # Find currently active leaf node
-            active_leaf = None
-            for node in root_node.iterate():
-                if node.status == py_trees.common.Status.RUNNING and isinstance(node, py_trees.behaviour.Behaviour) and not isinstance(node, py_trees.composites.Composite):
-                    active_leaf = node
-                    break
+                # Find currently active leaf node
+                active_leaf = None
+                for node in root_node.iterate():
+                    if node.status == py_trees.common.Status.RUNNING and isinstance(node, py_trees.behaviour.Behaviour) and not isinstance(node, py_trees.composites.Composite):
+                        active_leaf = node
+                        break
 
-            action_desc = "Idle"
-            if active_leaf is not None:
-                stage = getattr(active_leaf, "stage", "")
-                target_obj = active_leaf.args.get("object", "")
-                target_asset = active_leaf.args.get("asset", "")
-                detail = f"{target_obj}" + (f" -> {target_asset}" if target_asset else "")
-                action_desc = f"{active_leaf.name} [{detail}] ({stage})"
+                action_desc = "Idle"
+                if active_leaf is not None:
+                    stage = getattr(active_leaf, "stage", "")
+                    target_obj = active_leaf.args.get("object", "")
+                    target_asset = active_leaf.args.get("asset", "")
+                    detail = f"{target_obj}" + (f" -> {target_asset}" if target_asset else "")
+                    action_desc = f"{active_leaf.name} [{detail}] ({stage})"
 
-            # Render translucent informational HUD overlay
-            overlay = combined_bgr.copy()
-            cv2.rectangle(overlay, (0, 0), (combined_bgr.shape[1], 50), (15, 15, 15), -1)
-            cv2.addWeighted(overlay, 0.75, combined_bgr, 0.25, 0, combined_bgr)
+                # Render translucent informational HUD overlay
+                overlay = combined_bgr.copy()
+                cv2.rectangle(overlay, (0, 0), (combined_bgr.shape[1], 50), (15, 15, 15), -1)
+                cv2.addWeighted(overlay, 0.75, combined_bgr, 0.25, 0, combined_bgr)
 
-            # Left HUD: Tick count & status
-            status_str = str(status).replace("Status.", "")
-            status_color = (0, 255, 0) if status == py_trees.common.Status.SUCCESS else (0, 255, 255)
-            cv2.putText(combined_bgr, f"Tick: {tick_count:04d} | Status: {status_str}", (20, 32), cv2.FONT_HERSHEY_SIMPLEX, 0.65, status_color, 2, cv2.LINE_AA)
+                # Left HUD: Tick count & status
+                status_str = str(status).replace("Status.", "")
+                status_color = (0, 255, 0) if status == py_trees.common.Status.SUCCESS else (0, 255, 255)
+                cv2.putText(combined_bgr, f"Tick: {tick_count:04d} | Status: {status_str}", (20, 32), cv2.FONT_HERSHEY_SIMPLEX, 0.65, status_color, 2, cv2.LINE_AA)
 
-            # Right HUD: Active skill & motion planning stage
-            cv2.putText(combined_bgr, f"Skill: {action_desc}", (420, 32), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2, cv2.LINE_AA)
+                # Right HUD: Active skill & motion planning stage
+                cv2.putText(combined_bgr, f"Skill: {action_desc}", (420, 32), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2, cv2.LINE_AA)
 
-            # Camera view labels
-            cv2.putText(combined_bgr, "Frontal View", (20, combined_bgr.shape[0] - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1, cv2.LINE_AA)
-            cv2.putText(combined_bgr, "Top-Down (VLM) View", (532, combined_bgr.shape[0] - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1, cv2.LINE_AA)
+                # Camera view labels
+                cv2.putText(combined_bgr, "Frontal View", (20, combined_bgr.shape[0] - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1, cv2.LINE_AA)
+                cv2.putText(combined_bgr, "Top-Down (VLM) View", (532, combined_bgr.shape[0] - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1, cv2.LINE_AA)
 
-            # Save frame to video
-            writer.append_data(cv2.cvtColor(combined_bgr, cv2.COLOR_BGR2RGB))
+                # Save frame to video
+                writer.append_data(cv2.cvtColor(combined_bgr, cv2.COLOR_BGR2RGB))
 
-            # Display live GUI window
-            if gui_active:
-                cv2.imshow(window_name, combined_bgr)
-                key = cv2.waitKey(1)
-                if key == 27:  # ESC to interrupt
-                    print("\n[User Interrupt] Execution halted by ESC key.")
-                    break
-        except Exception as exc:
-            pass
+                # Display live GUI window
+                if gui_active:
+                    cv2.imshow(window_name, combined_bgr)
+                    key = cv2.waitKey(1)
+                    if key == 27:  # ESC to interrupt
+                        print("\n[User Interrupt] Execution halted by ESC key.")
+                        break
+            except Exception as exc:
+                print(f"[Warning] Frame rendering error at tick {tick_count}: {exc}")
 
-        tick_count += 1
-        if tick_count % 30 == 0 or status != py_trees.common.Status.RUNNING:
-            print(f"  [Tick {tick_count:04d}] Status: {status} | Action: {action_desc}")
+            tick_count += 1
+            if tick_count % 30 == 0 or status != py_trees.common.Status.RUNNING:
+                print(f"  [Tick {tick_count:04d}] Status: {status} | Action: {action_desc}")
 
-        if status == py_trees.common.Status.SUCCESS:
-            print(f"\n✅ [SUCCESS] Behavior Tree completed entire plan successfully at tick {tick_count}!")
-            break
-        elif status == py_trees.common.Status.FAILURE:
-            print(f"\n❌ [FAILURE] Behavior Tree returned FAILURE at tick {tick_count}.")
-            break
-
-    writer.close()
-    if gui_active:
-        try:
-            cv2.destroyAllWindows()
-        except Exception:
-            pass
-
-    env.close()
+            if status == py_trees.common.Status.SUCCESS:
+                print(f"\n✅ [SUCCESS] Behavior Tree completed entire plan successfully at tick {tick_count}!")
+                break
+            elif status == py_trees.common.Status.FAILURE:
+                print(f"\n❌ [FAILURE] Behavior Tree returned FAILURE at tick {tick_count}.")
+                break
+    except KeyboardInterrupt:
+        print("\n[User Interrupt] KeyboardInterrupt received. Finalizing video...")
+    finally:
+        if writer is not None:
+            writer.close()
+            print(f"  - Execution video saved and finalized: {video_path}")
+        if gui_active:
+            try:
+                cv2.destroyAllWindows()
+            except Exception:
+                pass
+        env.close()
 
     print("\n" + "=" * 70)
     print("Execution Finished!")

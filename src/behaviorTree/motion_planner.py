@@ -24,11 +24,14 @@ class TaskSpaceRRT:
         return True
 
     def _get_random_point(self, goal, goal_bias=0.2):
+        # Goal oriented RRT
+        # With probability 'goal_bias' it samples the goal point, else it samples a random bounded point
         if np.random.rand() < goal_bias:
             return np.array(goal)
         return np.random.uniform(self.bounds[0], self.bounds[1])
 
     def plan(self, start, goal, obstacles):
+        # Path planning in task space using RRT
         start_node = Node(start)
         nodes = [start_node]
         
@@ -71,6 +74,8 @@ class TaskSpaceRRT:
         return [np.array(start), np.array(goal)]
 
     def _shortcut_path(self, path, obstacles):
+        # Search backwards from the goal to remove unnecessary waypoints
+        # while maintaining collision-free path
         if len(path) <= 2:
             return path
         shortcutted = [path[0]]

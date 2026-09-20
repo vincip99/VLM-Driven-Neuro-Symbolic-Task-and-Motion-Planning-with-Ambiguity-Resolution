@@ -1,33 +1,29 @@
-\frametitle{Reactive Execution \& Runtime Tree}
-\begin{columns}[T]
-    \begin{column}{0.52\textwidth}
-        \small \textbf{Runtime Execution Flow}
+\frametitle{Path Planning: RRT}
+    Rapidly Random Trees (RRT) is a Probabilistic Path Planning method used to efficiently construct a path in continuous spaces.
+    \begin{algorithm}[H]
+        \captionsetup{font=scriptsize}
         \scriptsize
-        \begin{enumerate}
-            \item \textbf{Initial Check}: \texttt{GoalCheck\_Pre} runs. If goal holds, the tree returns \texttt{SUCCESS} immediately (no redundant actions).
-            \item \textbf{Execution}: On failure, the Fallback ticks \texttt{retry\_until\_goal} $\to$ \texttt{pddl\_plan\_sequence}.
-            \item \textbf{Closed-Loop Motion}: Each skill executes collision-free RRT trajectories at 20 Hz.
-            \item \textbf{Verification \& Recovery}: \texttt{GoalCheck\_Post} validates final state. If an object is dropped, the Retry decorator triggers re-execution.
-        \end{enumerate}
-    \end{column}
-
-    \begin{column}{0.48\textwidth}
-        \setbeamercolor{treebox}{bg=gray!10,fg=black}
-        \begin{beamercolorbox}[sep=4pt,rounded=true,shadow=true]{treebox}
-            \scriptsize \textbf{Generated Behavior Tree Structure}
-            \tiny
-            \begin{verbatim}
-[?] goal_guarded_root (Selector)
- |-- [>] GoalCheck_Pre
- `-- [R] retry_until_goal (max=3)
-      `-- [->] attempt (Sequence)
-           |-- [->] pddl_plan_sequence
-           |    |-- PickUp(yellow_cube)
-           |    |-- PlaceInBin(yellow_cube->pot)
-           |    |-- PickUp(red_can)
-           |    `-- PlaceInBin(red_can->bin)
-           `-- [>] GoalCheck_Post
-            \end{verbatim}
-        \end{beamercolorbox}
-    \end{column}
-\end{columns}
+        \caption{Goal Oriented RRT Algorithm}
+        \begin{algorithmic}[1]
+            \State $G.\text{init}(x_{\text{start}})$
+            \For{$i = 1 \dots K$}
+                \State $p = \text{UniformRandom}(0, 1)$
+                \If{$p \leq p_{\text{goal}}$}
+                    \State $x_{\text{rand}} \gets x_{\text{goal}}$
+                \Else
+                    \State $x_{\text{rand}} \gets \text{RandPose}()$
+                \EndIf
+                \State $x_{\text{nearest}} \gets \text{NearestVertex}(x_{\text{rand}}, G)$
+                \State $x_{\text{new}} \gets \text{NewConf}(x_{\text{nearest}}, x_{\text{rand}}, \Delta x)$
+                \If{\text{CollisionFree}$(x_{\text{nearest}}, x_{\text{new}})$}
+                    \State $G.\text{add\_vertex}(x_{\text{new}})$
+                    \State $G.\text{add\_edge}(x_{\text{nearest}}, x_{\text{new}})$
+                    \If{$x_{\text{new}} \in X_{\text{goal}}$}
+                        \Return \text{Path Found}
+                    \EndIf
+                \EndIf
+            \EndFor
+            \State \Return $G$
+        \end{algorithmic}
+    \end{algorithm}
+    The goal oriented version samples the goal point with a given probability $p$ while a random point with probability $1-p$.
