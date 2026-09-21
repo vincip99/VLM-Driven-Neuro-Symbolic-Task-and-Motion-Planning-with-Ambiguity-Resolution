@@ -57,6 +57,56 @@ The end-to-end framework decouples semantic reasoning, symbolic deliberation, re
 
 ---
 
+## 📊 Experimental Results & Demonstrations
+
+### 1. Symbolic PDDL Problem Generation & Verification Benchmark
+
+The deliberative layer was evaluated across **28 distinct tabletop simulation scenarios** spanning single-object tasks, multi-object relocations, sequential receptacle sorting (pots and bins), and ambiguous human phrasing.
+
+| Evaluation Metric | Benchmark Result | Target / Significance |
+| :--- | :--- | :--- |
+| **Logged Benchmark Trials** | **28** | Multi-tier evaluation suite |
+| **1st-Pass Solver Feasibility** | **26 / 28 (92.9%)** | Raw LLM output with Pydantic typing |
+| **Success after Feedback Loop** | **28 / 28 (100.0%)** | Self-repair within $\le 5$ retries |
+| **Fast Downward Parser Errors** | **0% (0 / 28)** | Zero syntax or domain crashes |
+| **Avg. Symbolic Solve Time** | **0.084 s** | Real-time causal gatekeeper ($< 0.1\,\text{s}$) |
+| **Avg. VLM Grounding Time** | **0.473 s** | Zero-shot grounding via Qwen 2.5-VL 3B |
+| **Avg. LLM 1st-Pass Time** | **0.663 s** | Local LLaMA 3 inference via Ollama |
+| **Max Problem Complexity** | **4 objects (8 plan steps)** | Long-horizon sequential sorting |
+
+![PDDL Benchmark Results](Docs/pictures/pddl_benchmark_results.png)
+
+* **Automated Failure Recovery:** In 2 of 28 trials, raw LLM outputs exhibited failure modes:
+  * *Predicate Hallucination:* Synthesized `(in ?x ?bin)` instead of domain-defined `(on ?x ?loc)`.
+  * *Type Mismatch:* Receptacle fixture classified as `obj` instead of `location`.
+  * In both instances, the programmatic validator intercepted the error and passed the exact compiler trace back to LLaMA 3, which successfully corrected the specification on retry 1 without human intervention.
+
+---
+
+### 2. Continuous Robotic Execution: Heuristic FSM vs. PPO Policy Rollouts
+
+To validate downstream physical executability, synthesized Behavior Tree plans were dispatched to the simulated 7-DOF Franka Emika Panda in MuJoCo. Below are the comparative execution rollouts displayed via the dual-camera system (**Top-Down VLM View** on the left, **Frontal Tracking View** on the right with real-time HUD telemetry):
+
+#### A. Heuristic Finite State Machine Controller 
+
+![Heuristic FSM Simulation Trial](Docs/pictures/simulation_trial_heuristic.gif)
+
+* **Execution Paradigm:** Deterministic open-loop waypoint sequencing (Pre-grasp $\to$ Descent $\to$ Grasp $\to$ Lift $\to$ Transit $\to$ Place) governed by linear Cartesian interpolation.
+* **Behavior:** Highly efficient under nominal centered conditions, but sensitive to object rolling or contact slippage during high-speed transit.
+
+---
+
+#### B. BC-Bootstrapped PPO Reinforcement Learning Policy 
+
+![PPO Policy Simulation Trial](Docs/pictures/simulation_trial_ppo.gif)
+
+* **Execution Paradigm:** Closed-loop continuous control trained with Proximal Policy Optimization (PPO) initialized from 100 expert demonstrations via Behavior Cloning (BC) warm-start.
+* **Behavior:** Actively modulates Cartesian end-effector compliance and finger grip forces; dynamically compensates for contact misalignments to achieve stable grasp elevation and reliable receptacle deposition.
+
+![Heuristic vs PPO Comparison](Docs/pictures/heuristic_vs_ppo.png)
+
+---
+
 ## 📂 Repository Structure
 
 ```text
