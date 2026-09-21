@@ -1,0 +1,9 @@
+[submodule "robosuite"]
+	path = robosuite
+	url = https://github.com/ARISE-Initiative/robosuite.git
+	ignore = untracked
+
+[submodule "robomimic"]
+	path = robomimic
+	url = https://github.com/ARISE-Initiative/robomimic.git
+	ignore = untracked
