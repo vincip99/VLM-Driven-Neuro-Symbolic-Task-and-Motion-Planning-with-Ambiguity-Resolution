@@ -148,6 +148,7 @@ def main():
 
         print(f"\n[Step 3] Resolving Ambiguity and Grounding Objects with VLM...")
         final_objects = ["red can", "yellow cube", "blue can"]
+        final_locations = ["sorting_bin", "pot"]
         try:
             input_data = {
                 "task_description": args.task,
@@ -165,10 +166,12 @@ def main():
                 result = vision_pipeline.handle_response(user_clarification)
 
             final_objects = result.get("task_objects", final_objects)
+            final_locations = result.get("target_locations", final_locations)
         except Exception as err:
             print(f"\n⚠️  VLM Query encountered error ({err}). Falling back to grounded objects: {final_objects}")
 
         print(f"\n[Grounded Objects]: {final_objects}")
+        print(f"[Grounded Locations]: {final_locations}")
 
         print("\n[Step 4] Generating Problem PDDL JSON via Reasoning Pipeline...")
         try:
@@ -178,7 +181,7 @@ def main():
                 task_description=args.task,
                 task_objects=final_objects,
                 domain_pddl=domain_pddl,
-                target_locations=["sorting_bin", "pot"],
+                target_locations=final_locations,
             )
             problem_pddl = problem_obj.to_pddl()
             print("\n✅ PDDL Problem Generated and Validated Successfully!")

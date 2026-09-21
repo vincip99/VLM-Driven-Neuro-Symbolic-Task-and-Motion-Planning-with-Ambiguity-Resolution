@@ -7,5 +7,6 @@ from .llm2pddl import (
 )
 
 from .ambiguityres import (
-    VlmChat, AmbresStructured, ambresFewShotPrompt, ASSETS_DIR
+    VlmChat, AmbresStructured, ambresFewShotPrompt, ASSETS_DIR,
+    ObjGrounding, LocGrounding, SceneGrounding
 )

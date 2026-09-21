@@ -13,4 +13,4 @@ class ASSETS_DIR:
         return ASSETS_DIR.DATA / env / mode
 
 from .vlm_chat import VlmChat
-from .vlm_model import AmbresStructured, ambresFewShotPrompt, validate_problem_against_domain, generate_with_retry
+from .vlm_model import AmbresStructured, ambresFewShotPrompt, ObjGrounding, LocGrounding, SceneGrounding

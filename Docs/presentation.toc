@@ -1,5 +1,7 @@
 \babel@toc {english}{}\relax 
 \beamer@sectionintoc {1}{Deliberative Layer}{3}{0}{1}
-\beamer@sectionintoc {2}{Executive Layer}{10}{0}{2}
-\beamer@sectionintoc {3}{Control Layer}{16}{0}{3}
-\beamer@sectionintoc {4}{Setup and Experimental Results}{26}{0}{4}
+\beamer@sectionintoc {2}{Executive Layer}{11}{0}{2}
+\beamer@sectionintoc {3}{Control Layer}{17}{0}{3}
+\beamer@sectionintoc {4}{Setup and Experimental Results}{27}{0}{4}
+\beamer@sectionintoc {5}{Conclusion}{30}{0}{5}
+\beamer@sectionintoc {6}{References}{31}{0}{6}

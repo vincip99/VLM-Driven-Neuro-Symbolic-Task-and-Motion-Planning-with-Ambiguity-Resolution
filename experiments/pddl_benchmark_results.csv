@@ -1,0 +1,2 @@
+trial_id,name,category,prompt,num_objects,task_objects,target_locations,is_ambiguous,vlm_grounding_time,llm_first_pass_time,first_pass_valid,first_pass_feasible,first_pass_error,retries_used,feedback_success,fd_parser_error,fd_success,fd_solve_time,plan_length
+1,single_can_sorting_bin,Tier 1: Single-Object,Put the red can in the sorting bin.,1,['red_can'],['sorting_bin'],True,16.933,18.397,True,True,None,0,True,False,True,0.0893,2

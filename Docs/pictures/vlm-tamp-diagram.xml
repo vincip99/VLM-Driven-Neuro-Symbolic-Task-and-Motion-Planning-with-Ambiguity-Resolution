@@ -1,0 +1,288 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="QH190GpAxWe-PkeyZrAi">
+    <mxGraphModel dx="1664" dy="902" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="1" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sec_inputs" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#94A3B8;strokeWidth=1.5;arcSize=6;verticalAlign=top;spacingTop=8;fontFamily=Helvetica;fontStyle=1;fontSize=11;fontColor=#0F172A;" value="&lt;b&gt;Multimodal Inputs&lt;/b&gt;" vertex="1">
+          <mxGeometry height="190" width="145" x="40" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="node_task_lang" parent="1" style="shape=callout;whiteSpace=wrap;html=1;perimeter=calloutPerimeter;position2=0.5;base=15;rounded=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#64748B;strokeWidth=1.2;fontFamily=Helvetica;fontSize=9.5;fontColor=#0F172A;align=center;" value="&lt;b&gt;Natural Language&lt;/b&gt;&lt;br&gt;Task Instruction&lt;br&gt;&lt;i&gt;&quot;Sort cubes into pot...&quot;&lt;/i&gt;" vertex="1">
+          <mxGeometry height="60" width="125" x="50" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="node_cameras" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#64748B;strokeWidth=1.2;fontFamily=Helvetica;fontSize=9.5;fontColor=#0F172A;align=center;" value="&lt;b&gt;Workspace Cameras&lt;/b&gt;&lt;br&gt;Top-Down (VLM 512×512)&lt;br&gt;&lt;font style=&quot;color:#64748B;font-size:8.5px;&quot;&gt;Frontview (Monitoring)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="65" width="125" x="50" y="175" as="geometry" />
+        </mxCell>
+        <mxCell id="node_domain_left" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;size=12;rounded=1;arcSize=8;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=1.2;fontColor=#92400E;fontFamily=Helvetica;fontStyle=1;fontSize=10.5;align=center;" value="Domain.pddl" vertex="1">
+          <mxGeometry height="45" width="115" x="55" y="357.5" as="geometry" />
+        </mxCell>
+        <mxCell id="sec_perception" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#6366F1;strokeWidth=1.5;arcSize=6;verticalAlign=top;spacingTop=8;fontFamily=Helvetica;fontStyle=1;fontSize=11;fontColor=#312E81;" value="&lt;b&gt;Perception &amp;amp; Ambiguity Resolution&lt;/b&gt; &lt;font style=&quot;font-weight:normal;color:#4F46E5;&quot;&gt;(Qwen 2.5-VL 3B)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="190" width="460" x="210" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="node_grounding" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#6366F1;strokeWidth=1.2;fontFamily=Helvetica;fontSize=10;fontColor=#1E1B4B;align=center;" value="&lt;b&gt;Visual Grounding&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 9px; color: rgb(75, 85, 99);&quot;&gt;Object, Location and Scene&lt;br&gt;Symbol Extraction&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="125" x="225" y="115" as="geometry" />
+        </mxCell>
+        <mxCell id="node_ambig_check" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#E0E7FF;strokeColor=#4F46E5;strokeWidth=1.5;fontFamily=Helvetica;fontSize=10;fontColor=#1E1B4B;fontStyle=1;align=center;" value="Is the Task&lt;br&gt;Ambiguous?" vertex="1">
+          <mxGeometry height="70" width="115" x="380" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="node_clarification" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#6366F1;strokeWidth=1.2;fontFamily=Helvetica;fontSize=10;fontColor=#1E1B4B;align=center;" value="&lt;b&gt;Clarification Dialog&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px;color:#4B5563;&quot;&gt;Interactive Human&lt;br&gt;Disambiguation Loop&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="130" x="525" y="115" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_inputs_to_grounding" edge="1" parent="1" source="sec_inputs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=1.5;endArrow=classic;endFill=1;endSize=6;" target="node_grounding">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ground_to_ambig" edge="1" parent="1" source="node_grounding" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=1.5;endArrow=classic;endFill=1;endSize=6;" target="node_ambig_check">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ambig_to_clarif" edge="1" parent="1" source="node_ambig_check" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#DC2626;strokeWidth=1.5;endArrow=classic;endFill=1;endSize=6;" target="node_clarification">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label_ambig_yes" connectable="0" parent="edge_ambig_to_clarif" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=#FFFFFF;rounded=1;fontFamily=Helvetica;fontSize=9.5;fontStyle=1;fontColor=#DC2626;" value="Yes" vertex="1">
+          <mxGeometry relative="1" x="0.05" y="-1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_clarif_to_ground" edge="1" parent="1" source="node_clarification" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6366F1;strokeWidth=1.2;dashed=1;dashPattern=3 3;endArrow=classic;endFill=1;endSize=5;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="node_grounding">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="590" y="95" />
+              <mxPoint x="287" y="95" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sec_deliberation" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFBEB;strokeColor=#F59E0B;strokeWidth=1.5;arcSize=6;verticalAlign=top;spacingTop=8;fontFamily=Helvetica;fontStyle=1;fontSize=11;fontColor=#78350F;" value="&lt;b&gt;Deliberation &amp;amp; Plan Verification&lt;/b&gt; &lt;font style=&quot;font-weight:normal;color:#D97706;&quot;&gt;(LLaMA 3 + Fast Downward)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="195" width="400" x="210" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="node_pddl_synth" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#F59E0B;strokeWidth=1.2;fontFamily=Helvetica;fontSize=10;fontColor=#451A03;align=center;" value="&lt;b&gt;PDDL Synthesizer&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px;color:#4B5563;&quot;&gt;Problem Formulation&lt;br&gt;(Structured JSON)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="125" x="225" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="node_validator" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#F59E0B;strokeWidth=1.2;fontFamily=Helvetica;fontSize=10;fontColor=#451A03;align=center;" value="&lt;b&gt;Domain Validator&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px;color:#4B5563;&quot;&gt;Pydantic Schema &amp;amp;&lt;br&gt;Regex Consistency Check&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="125" x="225" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="node_autocorrect" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#F59E0B;strokeWidth=1.2;fontFamily=Helvetica;fontSize=10;fontColor=#451A03;align=center;" value="&lt;b&gt;Auto-Correction&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 9px; color: rgb(75, 85, 99);&quot;&gt;Error Feedback Loop&lt;br&gt;(up to &lt;i&gt;n&lt;/i&gt; retries)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="470" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="node_fast_downward" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#F59E0B;strokeWidth=1.2;fontFamily=Helvetica;fontSize=10;fontColor=#451A03;align=center;" value="&lt;b&gt;Fast Downward&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 9px; color: rgb(75, 85, 99);&quot;&gt;Classical PDDL Planner&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="125" x="470" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ambig_to_delib" edge="1" parent="1" source="node_ambig_check" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#16A34A;strokeWidth=1.5;endArrow=classic;endFill=1;endSize=6;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="node_pddl_synth">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="437.5" y="270" />
+              <mxPoint x="250" y="270" />
+            </Array>
+            <mxPoint x="440" y="200" as="sourcePoint" />
+            <mxPoint x="290.01" y="325" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label_ambig_no" connectable="0" parent="edge_ambig_to_delib" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=#FFFFFF;rounded=1;fontFamily=Helvetica;fontSize=9;fontColor=#15803D;" value="&lt;b&gt;No&lt;/b&gt;: Grounded Symbols {&lt;i&gt;task_objects, target_locations&lt;/i&gt;}" vertex="1">
+          <mxGeometry relative="1" x="-0.15" y="-1" as="geometry">
+            <mxPoint x="-45" y="21" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_domain_to_synth" edge="1" parent="1" source="node_domain_left" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#D97706;strokeWidth=1.2;endArrow=classic;endFill=1;endSize=5;" target="node_pddl_synth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_synth_to_validator" edge="1" parent="1" source="node_pddl_synth" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=1.5;endArrow=classic;endFill=1;endSize=6;" target="node_validator">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label_json_problem" connectable="0" parent="edge_synth_to_validator" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=#FFFFFF;rounded=1;fontFamily=Helvetica;fontSize=8.5;fontColor=#475569;" value="JSON Problem" vertex="1">
+          <mxGeometry relative="1" x="0.05" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_validator_to_autocorrect" edge="1" parent="1" source="node_validator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#DC2626;strokeWidth=1.2;endArrow=classic;endFill=1;endSize=5;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" target="node_autocorrect">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="365" y="445" />
+              <mxPoint x="365" y="395" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label_val_fail" connectable="0" parent="edge_validator_to_autocorrect" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=#FFFFFF;rounded=1;fontFamily=Helvetica;fontSize=8.5;fontColor=#DC2626;" value="Invalid" vertex="1">
+          <mxGeometry relative="1" x="0.1" y="-1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_autocorrect_to_synth" edge="1" parent="1" source="node_autocorrect" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#F59E0B;strokeWidth=1.2;dashed=1;dashPattern=3 3;endArrow=classic;endFill=1;endSize=5;exitX=0;exitY=0.25;exitDx=0;exitDy=0;entryX=1;entryY=0.25;entryDx=0;entryDy=0;" target="node_pddl_synth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label_reprompt" connectable="0" parent="edge_autocorrect_to_synth" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=#FFFFFF;rounded=1;fontFamily=Helvetica;fontSize=8.5;fontColor=#D97706;" value="Reprompt" vertex="1">
+          <mxGeometry relative="1" x="0.05" y="-1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_validator_to_fd" edge="1" parent="1" source="node_validator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#16A34A;strokeWidth=1.5;endArrow=classic;endFill=1;endSize=6;" target="node_fast_downward">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label_problem_pddl" connectable="0" parent="edge_validator_to_fd" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=#FFFFFF;rounded=1;fontFamily=Helvetica;fontSize=9;fontColor=#15803D;" value="Valid: &lt;i&gt;problem.pddl&lt;/i&gt;" vertex="1">
+          <mxGeometry relative="1" y="-1" as="geometry" />
+        </mxCell>
+        <mxCell id="node_domain_right" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;size=10;rounded=1;arcSize=8;fillColor=#FEF3C7;strokeColor=#D97706;strokeWidth=1.2;fontColor=#92400E;fontFamily=Helvetica;fontStyle=1;fontSize=10;align=center;" value="Domain.pddl" vertex="1">
+          <mxGeometry height="40" width="100" x="715" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="node_skills_reg" parent="1" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;size=10;rounded=1;arcSize=8;fillColor=#EDE9FE;strokeColor=#7C3AED;strokeWidth=1.2;fontColor=#5B21B6;fontFamily=Helvetica;fontStyle=1;fontSize=10;align=center;" value="Skill Registry" vertex="1">
+          <mxGeometry height="40" width="115" x="835" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_domain_to_skills" edge="1" parent="1" source="node_domain_right" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#7C3AED;strokeWidth=1.2;endArrow=classic;endFill=1;endSize=5;" target="node_skills_reg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sec_executive" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#10B981;strokeWidth=1.5;arcSize=6;verticalAlign=top;spacingTop=8;fontFamily=Helvetica;fontStyle=1;fontSize=11;fontColor=#064E3B;" value="&lt;b&gt;Executive Layer&lt;/b&gt; &lt;font style=&quot;font-weight:normal;color:#059669;&quot;&gt;(Behavior Tree)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="135" width="445" x="695" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="node_bt_builder" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#10B981;strokeWidth=1.2;fontFamily=Helvetica;fontSize=10;fontColor=#064E3B;align=center;" value="&lt;b&gt;BT Plan Builder&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px;color:#4B5563;&quot;&gt;Compiles Plan into&lt;br&gt;Action Subtrees&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="115" x="710" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="node_bt_runtime" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#10B981;strokeWidth=1.2;fontFamily=Helvetica;fontSize=10;fontColor=#064E3B;align=center;" value="&lt;b&gt;BT Runtime Engine&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 9px; color: rgb(75, 85, 99);&quot;&gt;Execution Control Loop&lt;br&gt;Ticks @ 20 Hz&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="115" x="850" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="node_bt_goals" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#10B981;strokeWidth=1.2;fontFamily=Helvetica;fontSize=10;fontColor=#064E3B;align=center;" value="&lt;b&gt;Goal Verification&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px;color:#4B5563;&quot;&gt;Pre &amp;amp; Post Checks&lt;br&gt;(PDDL Grounding)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="135" x="990" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_fd_to_builder" edge="1" parent="1" source="node_fast_downward" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#10B981;strokeWidth=1.5;endArrow=classic;endFill=1;endSize=6;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="node_bt_builder">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="680" y="460" />
+              <mxPoint x="680" y="200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label_action_plan" connectable="0" parent="edge_fd_to_builder" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];rounded=1;fontFamily=Helvetica;fontSize=9.5;fontColor=#10B981;" value="&lt;b&gt;Action Plan&lt;/b&gt;&lt;br&gt;$$\pi = \langle \text{pick}, \text{place}, \dots \rangle$$" vertex="1">
+          <mxGeometry relative="1" x="0.1" y="-2" as="geometry">
+            <mxPoint x="-12" y="-49" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_skills_to_builder" edge="1" parent="1" source="node_skills_reg" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#7C3AED;strokeWidth=1.2;endArrow=classic;endFill=1;endSize=5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="node_bt_builder">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="892" y="120" />
+              <mxPoint x="767" y="120" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_builder_to_engine" edge="1" parent="1" source="node_bt_builder" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#10B981;strokeWidth=1.5;endArrow=classic;endFill=1;endSize=6;" target="node_bt_runtime">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_engine_to_goals" edge="1" parent="1" source="node_bt_runtime" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#10B981;strokeWidth=1.2;endArrow=classic;endFill=1;endSize=5;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;" target="node_bt_goals">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label_tick_goals" connectable="0" parent="edge_engine_to_goals" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=#FFFFFF;rounded=1;fontFamily=Helvetica;fontSize=8;fontColor=#065F46;" value="tick" vertex="1">
+          <mxGeometry relative="1" y="-1" as="geometry">
+            <mxPoint x="1" y="-9" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_goals_to_engine" edge="1" parent="1" source="node_bt_goals" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#10B981;strokeWidth=1.2;dashed=1;dashPattern=3 3;endArrow=classic;endFill=1;endSize=5;exitX=0;exitY=0.7;exitDx=0;exitDy=0;entryX=1;entryY=0.7;entryDx=0;entryDy=0;" target="node_bt_runtime">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label_status_goals" connectable="0" parent="edge_goals_to_engine" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=#FFFFFF;rounded=1;fontFamily=Helvetica;fontSize=8;fontColor=#065F46;" value="status" vertex="1">
+          <mxGeometry relative="1" y="1" as="geometry">
+            <mxPoint y="7" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sec_tamp" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF1F2;strokeColor=#F43F5E;strokeWidth=1.5;arcSize=6;verticalAlign=top;spacingTop=8;fontFamily=Helvetica;fontStyle=1;fontSize=11;fontColor=#881337;" value="&lt;b&gt;Task &amp;amp; Motion Planning&lt;/b&gt; &lt;font style=&quot;font-weight:normal;color:#E11D48;&quot;&gt;(TAMP Execution Layer)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="195" width="445" x="695" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="node_rrt" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#F43F5E;strokeWidth=1.2;fontFamily=Helvetica;fontSize=10;fontColor=#881337;align=center;" value="&lt;b&gt;TaskSpaceRRT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px;color:#4B5563;&quot;&gt;Collision-Free&lt;br&gt;Trajectory Planning&lt;/font&gt;" vertex="1">
+          <mxGeometry height="55" width="115" x="710" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="node_path_follower" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#F43F5E;strokeWidth=1.2;fontFamily=Helvetica;fontSize=10;fontColor=#881337;align=center;" value="&lt;b&gt;Path Follower&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size: 9px; color: rgb(75, 85, 99);&quot;&gt;Closed-Loop Waypoint&lt;br&gt;controller&lt;/font&gt;" vertex="1">
+          <mxGeometry height="55" width="115" x="710" y="435" as="geometry" />
+        </mxCell>
+        <mxCell id="node_manipulation" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#F43F5E;strokeWidth=1.2;fontFamily=Helvetica;fontSize=10;fontColor=#881337;align=center;" value="&lt;b&gt;Manipulation Skill&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px;color:#4B5563;&quot;&gt;Hybrid PPO / Heuristic FSM&lt;br&gt;Approach, Grasp &amp;amp; Lift&lt;/font&gt;" vertex="1">
+          <mxGeometry height="65" width="125" x="845" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_bt_to_manip" edge="1" parent="1" source="node_bt_runtime" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#F43F5E;strokeWidth=1.5;endArrow=classic;endFill=1;endSize=6;exitX=0.7;exitY=1;exitDx=0;exitDy=0;" target="node_manipulation">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="930.52" y="275" />
+              <mxPoint x="920" y="275" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_bt_to_rrt" edge="1" parent="1" source="node_bt_runtime" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#F43F5E;strokeWidth=1.5;endArrow=classic;endFill=1;endSize=6;exitX=0.3;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="node_rrt">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="885" y="275" />
+              <mxPoint x="767" y="275" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="node_osc" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#F43F5E;strokeWidth=1.2;fontFamily=Helvetica;fontSize=10;fontColor=#881337;align=center;" value="&lt;b&gt;Operational Space&lt;br&gt;Controller (OSC)&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:8.5px;color:#4B5563;&quot;&gt;Task-Space Impedance&lt;br&gt;Torque Decoupling&lt;/font&gt;" vertex="1">
+          <mxGeometry height="75" width="115" x="1020" y="375" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_rrt_to_follower" edge="1" parent="1" source="node_rrt" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=1.5;endArrow=classic;endFill=1;endSize=6;" target="node_path_follower">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label_waypoints" connectable="0" parent="edge_rrt_to_follower" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;rounded=1;fontFamily=Helvetica;fontSize=8.5;strokeColor=#334155;fontColor=#334155;" value="Waypoints $$\mathbf{X} = [x_1, \dots, x_N]$$" vertex="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="48" y="1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_follower_to_osc" edge="1" parent="1" source="node_path_follower" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=1.5;endArrow=classic;endFill=1;endSize=6;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" target="node_osc">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="990" y="462" />
+              <mxPoint x="990" y="431" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label_cmd_nav" connectable="0" parent="edge_follower_to_osc" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;rounded=1;fontFamily=Helvetica;fontSize=8.5;fontColor=#334155;" value="$$\Delta \mathbf{x}_{\text{nav}}$$ velocity cmd" vertex="1">
+          <mxGeometry relative="1" x="0.1" y="-1" as="geometry">
+            <mxPoint x="11" y="19" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_feedback_to_goals" edge="1" parent="1" source="sec_plant" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;dashed=1;dashPattern=4 4;endArrow=classic;endFill=1;endSize=6;exitX=0.95;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="node_bt_goals">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1093.52" y="520" />
+              <mxPoint x="1150.05" y="520" />
+              <mxPoint x="1150.05" y="250.05" />
+              <mxPoint x="1057.52" y="250.05" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label_fb_goals" connectable="0" parent="edge_feedback_to_goals" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=#FFFFFF;rounded=1;fontFamily=Helvetica;fontSize=8.5;fontColor=#475569;" value="&lt;b&gt;Ground Truth Predicates&lt;/b&gt; (&lt;i&gt;is_in_bin, is_grasped&lt;/i&gt;)" vertex="1">
+          <mxGeometry relative="1" x="0.35" y="-1" as="geometry">
+            <mxPoint x="-81" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_manip_to_osc" edge="1" parent="1" source="node_manipulation" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#334155;strokeWidth=1.5;endArrow=classic;endFill=1;endSize=6;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" target="node_osc">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="990" y="382" />
+              <mxPoint x="990" y="394" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label_cmd_manip" connectable="0" parent="edge_manip_to_osc" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;rounded=1;fontFamily=Helvetica;fontSize=8.5;fontColor=#334155;" value="$$[\Delta \mathbf{x}_{\text{man}}, \text{grip}]$$ action" vertex="1">
+          <mxGeometry relative="1" x="0.1" y="-1" as="geometry">
+            <mxPoint x="13" y="-30" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_osc_to_plant" edge="1" parent="1" source="node_osc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#BE123C;strokeWidth=2;endArrow=classic;endFill=1;endSize=7;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.92;entryY=0;entryDx=0;entryDy=0;" target="sec_plant">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="label_torques" connectable="0" parent="edge_osc_to_plant" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;rounded=1;fontFamily=Helvetica;fontSize=9.5;fontStyle=1;strokeColor=#BE123C;fontColor=#BE123C;" value="&lt;b&gt;Joint Torques&lt;/b&gt; $$\boldsymbol{\tau}$$" vertex="1">
+          <mxGeometry relative="1" x="0.05" y="-1" as="geometry">
+            <mxPoint x="-29" y="-19" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_feedback_to_ctrl" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#64748B;strokeWidth=1.5;dashed=1;dashPattern=4 4;endArrow=classic;endFill=1;endSize=6;exitX=0.76;exitY=0;exitDx=0;exitDy=0;entryX=0.587;entryY=0.957;entryDx=0;entryDy=0;entryPerimeter=0;" target="node_manipulation">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="918.38" y="550" />
+            </Array>
+            <mxPoint x="922.15" y="550" as="sourcePoint" />
+            <mxPoint x="912.85" y="415" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label_proprioception" connectable="0" parent="edge_feedback_to_ctrl" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=default;rounded=1;fontFamily=Helvetica;fontSize=8.5;fontColor=#64748B;" value="&lt;b&gt;Proprioception State&lt;/b&gt; $$(q, \dot{q}, x_{\text{ee}})$$" vertex="1">
+          <mxGeometry relative="1" x="0.1" y="-1" as="geometry">
+            <mxPoint x="-49" y="52" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="z7N4JHCLcOdCD2dK54UR-6" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="65" width="930" x="210" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="sec_plant" parent="z7N4JHCLcOdCD2dK54UR-6" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F1F5F9;strokeColor=#334155;strokeWidth=2;arcSize=6;fontFamily=Helvetica;align=center;verticalAlign=middle;fontColor=#0F172A;" value="&lt;b&gt;Simulation Plant &amp;amp; Physics:&lt;/b&gt; Franka Emika Panda (7-DOF Robot) &amp;nbsp;|&amp;nbsp; Robosuite TaskSorting Custom Arena &amp;nbsp;|&amp;nbsp; MuJoCo Physics Engine @ 500 Hz" vertex="1">
+          <mxGeometry height="65" width="930" as="geometry" />
+        </mxCell>
+        <mxCell id="z7N4JHCLcOdCD2dK54UR-5" parent="z7N4JHCLcOdCD2dK54UR-6" style="image;aspect=fixed;html=1;points=[];align=center;fontSize=12;image=img/lib/azure2/other/Defender_Robot_Controller.svg;" value="" vertex="1">
+          <mxGeometry height="55" width="53.51" x="10" y="5" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

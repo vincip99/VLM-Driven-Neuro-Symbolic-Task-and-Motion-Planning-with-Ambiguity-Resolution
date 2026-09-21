@@ -1,0 +1,32 @@
+[
+  {
+    "trial_id": 1,
+    "name": "single_can_sorting_bin",
+    "category": "Tier 1: Single-Object",
+    "prompt": "Put the red can in the sorting bin.",
+    "num_objects": 1,
+    "task_objects": [
+      "red_can"
+    ],
+    "target_locations": [
+      "sorting_bin"
+    ],
+    "is_ambiguous": true,
+    "vlm_grounding_time": 16.933,
+    "llm_first_pass_time": 18.397,
+    "first_pass_valid": true,
+    "first_pass_feasible": true,
+    "first_pass_error": "None",
+    "retries_used": 0,
+    "feedback_success": true,
+    "fd_parser_error": false,
+    "fd_success": true,
+    "fd_solve_time": 0.0893,
+    "plan_length": 2,
+    "plan_actions": [
+      "(pick red_can)",
+      "(place red_can sorting_bin)"
+    ],
+    "problem_pddl": "(define (problem manipulation-task)\n  (:domain manipulation)\n  (:objects\n    red_can - obj\n    sorting_bin - location\n  )\n  (:init\n    (on-table red_can)\n  )\n  (:goal (and\n    (on red_can sorting_bin)\n  ))\n)\n"
+  }
+]

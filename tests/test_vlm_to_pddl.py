@@ -5,7 +5,9 @@ import numpy as np
 import robosuite as suite
 
 # Adjust this import path based on where your classes are saved
-from src.ambiguityres.vlm_model import ambresFewShotPrompt, AmbresStructured
+from src.ambiguityres.vlm_model import (
+    ambresFewShotPrompt, AmbresStructured, ObjGrounding, LocGrounding, SceneGrounding
+)
 from src.llm2pddl.domains import PDDLenv
 
 def main():
@@ -33,20 +35,39 @@ def main():
     )
     obs = env.reset()
     
+    # Print physical objects configured in the simulator scene
+    scene_objects = [obj.name for obj in getattr(env, "objects", [])]
+    print(f"\n🌍 [Physical Scene Objects in Simulator ({len(scene_objects)})]:")
+    for idx, name in enumerate(scene_objects, 1):
+        print(f"   {idx}. {name}")
+    
     rgb_top_down = np.flipud(obs["top_down_vlm_image"])
     image_path = os.path.abspath("test_vlm2pddl_camera_top_down.jpg")
     cv2.imwrite(image_path, cv2.cvtColor(rgb_top_down, cv2.COLOR_RGB2BGR))
-    print(f"Captured top-down camera frame: {image_path}")
+    print(f"\nCaptured top-down camera frame: {image_path}")
 
     print(f"\n[Task]: {initial_task}")
 
-    # 2. Ambiguity Loop 
+    # 2. Ambiguity Loop & Visual Grounding (SceneGrounding)
     input_data = {
         "task_description": initial_task,
         "image_path": image_path
     }
     
     result = vision_pipeline.handle_query_dict(input_data)
+    
+    # Validate and display using SceneGrounding, ObjGrounding, and LocGrounding schemas
+    scene_grounding = SceneGrounding(
+        task_objects=result.get("task_objects", []),
+        target_locations=result.get("target_locations", [])
+    )
+    print(f"\n🔍 [VLM Visual Grounding (SceneGrounding Schema)]:")
+    print(f"   📦 Manipulable Objects (ObjGrounding): {scene_grounding.task_objects}")
+    for idx, name in enumerate(scene_grounding.task_objects, 1):
+        print(f"      ({idx}) Object: '{name}'")
+    print(f"   📍 Target Locations   (LocGrounding): {scene_grounding.target_locations}")
+    for idx, name in enumerate(scene_grounding.target_locations, 1):
+        print(f"      ({idx}) Location: '{name}'")
     
     # If the task is ambiguous, ask the user for clarification
     if result.get("task_ambiguous"):
@@ -55,14 +76,26 @@ def main():
         
         # Send clarification back to the VLM to get the final objects
         result = vision_pipeline.handle_response(user_clarification)
+        scene_grounding = SceneGrounding(
+            task_objects=result.get("task_objects", []),
+            target_locations=result.get("target_locations", [])
+        )
+        print(f"\n🔍 [Post-Clarification Scene Grounding]:")
+        print(f"   📦 Objects:   {scene_grounding.task_objects}")
+        print(f"   📍 Locations: {scene_grounding.target_locations}")
     
-    final_objects = result.get("task_objects", [])
-    # Ensure any items mentioned in the initial task command are preserved
-    for candidate in ["red can", "blue can", "green can", "yellow cube", "purple cube"]:
-        if candidate in initial_task.lower() and candidate not in final_objects:
-            final_objects.append(candidate)
+    final_objects = list(scene_grounding.task_objects)
+    final_locations = list(scene_grounding.target_locations)
 
-    print(f"\n[Grounded Objects]: {final_objects}")
+    print(f"\n🎯 [Final Grounded Entities for PDDL Problem Synthesis]:")
+    print(f"   📦 Objects (type 'obj'):")
+    for idx, name in enumerate(final_objects, 1):
+        pddl_name = name.strip().replace(" ", "_")
+        print(f"      ({idx}) Natural Name: '{name}'  ==>  PDDL Symbol: '{pddl_name}'")
+    print(f"   📍 Locations (type 'location'):")
+    for idx, name in enumerate(final_locations, 1):
+        pddl_name = name.strip().replace(" ", "_")
+        print(f"      ({idx}) Natural Name: '{name}'  ==>  PDDL Symbol: '{pddl_name}'")
 
     # 3. PDDL Generation & Validation
     print("\nLoading pre-defined domain and Generating Problem PDDL JSON...")
@@ -77,13 +110,12 @@ def main():
     try:
         # Calls the method designed to output JSON for the problem only
         initial_state_desc = "All objects are currently resting on the table. The robot's arm is empty."
-        target_locations = ["sorting_bin", "pot"]
         problem_obj = reasoning_pipeline.generate_problem_json(
             initial_state_desc=initial_state_desc,
             task_description=initial_task, 
             task_objects=final_objects,
             domain_pddl=domain_pddl,
-            target_locations=target_locations,
+            target_locations=final_locations,
         )
         
         # Convert the Pydantic object to PDDL string
