@@ -16,7 +16,6 @@ import matplotlib.pyplot as plt
 repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 log_dir = os.path.join(repo_root, "logs", "ppo_training")
 output_dirs = [
-    os.path.join(repo_root, "images"),
     os.path.join(repo_root, "Docs", "pictures"),
 ]
 for d in output_dirs:

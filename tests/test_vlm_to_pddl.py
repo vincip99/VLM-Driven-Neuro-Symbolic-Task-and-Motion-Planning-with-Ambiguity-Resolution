@@ -42,7 +42,9 @@ def main():
         print(f"   {idx}. {name}")
     
     rgb_top_down = np.flipud(obs["top_down_vlm_image"])
-    image_path = os.path.abspath("test_vlm2pddl_camera_top_down.jpg")
+    exp_dir = os.path.join(repo_root, "experiments")
+    os.makedirs(exp_dir, exist_ok=True)
+    image_path = os.path.abspath(os.path.join(exp_dir, "test_vlm2pddl_camera_top_down.jpg"))
     cv2.imwrite(image_path, cv2.cvtColor(rgb_top_down, cv2.COLOR_RGB2BGR))
     print(f"\nCaptured top-down camera frame: {image_path}")
 
@@ -127,12 +129,12 @@ def main():
         print(f"\n❌ Validation Failed: {e}")
         return
 
-    # 4. Save Trial to generated_problems Folder & Solve
-    gen_problems_dir = os.path.join(repo_root, "generated_problems")
+    # 4. Save Trial to experiments/generated_problems Folder & Solve
+    gen_problems_dir = os.path.join(repo_root, "experiments", "generated_problems")
     os.makedirs(gen_problems_dir, exist_ok=True)
 
     # Number each trial sequentially with a timestamp
-    existing_files = [f for f in os.listdir(gen_problems_dir) if f.endswith(".pddl")]
+    existing_files = [f for f in os.listdir(gen_problems_dir) if f.endswith(".pddl") and f != "problem.pddl"]
     trial_num = len(existing_files) + 1
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     trial_filename = f"problem_trial_{trial_num:03d}_{timestamp}.pddl"
@@ -142,10 +144,8 @@ def main():
         f.write(problem_pddl)
     print(f"\n📁 Saved trial problem file to: {trial_filepath}")
 
-    # Also keep domain.pddl and problem.pddl in root for current execution
-    with open(os.path.join(repo_root, "domain.pddl"), "w") as f:
-        f.write(domain_pddl)
-    with open(os.path.join(repo_root, "problem.pddl"), "w") as f:
+    # Also keep canonical problem.pddl in experiments/generated_problems/
+    with open(os.path.join(gen_problems_dir, "problem.pddl"), "w") as f:
         f.write(problem_pddl)
 
     print("\n--- Generated Problem PDDL ---")

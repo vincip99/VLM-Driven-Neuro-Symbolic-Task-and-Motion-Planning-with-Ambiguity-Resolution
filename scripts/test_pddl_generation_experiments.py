@@ -941,7 +941,6 @@ def plot_benchmark_results(df: pd.DataFrame, output_dir: str):
 
     save_paths = [
         os.path.join(output_dir, "pddl_benchmark_results.png"),
-        os.path.join(repo_root, "images", "pddl_benchmark_results.png"),
         os.path.join(repo_root, "Docs", "pictures", "pddl_benchmark_results.png"),
     ]
     for sp in save_paths:
@@ -1006,7 +1005,7 @@ def main():
     args = parser.parse_args()
 
     os.makedirs(args.save_dir, exist_ok=True)
-    gen_problems_dir = os.path.join(repo_root, "generated_problems")
+    gen_problems_dir = os.path.join(repo_root, args.save_dir, "generated_problems")
     os.makedirs(gen_problems_dir, exist_ok=True)
 
     # Domain PDDL definition
@@ -1025,7 +1024,7 @@ def main():
     print(f"   Domain:      {domain_path}\n")
 
     # Set up image capture if live
-    image_path = "test_vlm2pddl_camera_top_down.jpg"
+    image_path = os.path.join(repo_root, args.save_dir, "test_vlm2pddl_camera_top_down.jpg")
     vision_pipeline = None
     reasoning_pipeline = None
 

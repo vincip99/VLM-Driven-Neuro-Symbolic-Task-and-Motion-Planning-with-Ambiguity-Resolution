@@ -1,0 +1,43 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Caches and virtual environments
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+dist/
+build/
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.vrb
+*.synctex.gz
+
+# Fast Downward & Planner temporary artifacts
+output.sas
+*.sas
+sas_plan*
+temp_*.pddl
+plan_*.txt
+
+# Ephemeral runtime camera captures
+test_vlm2pddl_camera_top_down.jpg
+experiments/test_vlm2pddl_camera_top_down.jpg
+
+# Operating System & IDE junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

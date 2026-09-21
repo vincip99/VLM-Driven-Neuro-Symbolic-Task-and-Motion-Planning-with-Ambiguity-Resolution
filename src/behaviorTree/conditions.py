@@ -41,8 +41,9 @@ def extract_goals_from_problem(problem_source: Optional[str] = None) -> List[Tup
         curr_dir = os.path.dirname(os.path.abspath(__file__))
         repo_root = os.path.abspath(os.path.join(curr_dir, "..", ".."))
         candidates = [
-            os.path.join(repo_root, "problem.pddl"),
+            os.path.join(repo_root, "experiments", "generated_problems", "problem.pddl"),
             os.path.join(repo_root, "generated_problems", "problem.pddl"),
+            os.path.join(repo_root, "problem.pddl"),
         ]
         for candidate in candidates:
             if os.path.isfile(candidate):

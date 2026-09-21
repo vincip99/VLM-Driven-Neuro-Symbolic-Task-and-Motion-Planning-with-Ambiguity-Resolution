@@ -38,7 +38,6 @@ CUBE_TARGET_OBJECTS = [
 ]
 
 output_dirs = [
-    os.path.join(repo_root, "images"),
     os.path.join(repo_root, "Docs", "pictures"),
 ]
 for d in output_dirs:

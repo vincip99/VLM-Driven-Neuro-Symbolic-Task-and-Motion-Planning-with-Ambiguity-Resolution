@@ -125,7 +125,9 @@ def main():
     
     # Capture and save top-down camera frame for VLM grounding
     rgb_top_down = np.flipud(obs["top_down_vlm_image"])
-    image_path = os.path.abspath(os.path.join(repo_root, "test_vlm2pddl_camera_top_down.jpg"))
+    exp_dir = os.path.join(repo_root, "experiments")
+    os.makedirs(exp_dir, exist_ok=True)
+    image_path = os.path.abspath(os.path.join(exp_dir, "test_vlm2pddl_camera_top_down.jpg"))
     cv2.imwrite(image_path, cv2.cvtColor(rgb_top_down, cv2.COLOR_RGB2BGR))
     print(f"Captured top-down camera frame saved to: {image_path}")
 
@@ -214,10 +216,10 @@ def main():
   )
 )"""
 
-    # Save trial to generated_problems folder
-    gen_problems_dir = os.path.join(repo_root, "generated_problems")
+    # Save trial to experiments/generated_problems folder
+    gen_problems_dir = os.path.join(repo_root, "experiments", "generated_problems")
     os.makedirs(gen_problems_dir, exist_ok=True)
-    existing_pddl = [f for f in os.listdir(gen_problems_dir) if f.endswith(".pddl")]
+    existing_pddl = [f for f in os.listdir(gen_problems_dir) if f.endswith(".pddl") and f != "problem.pddl"]
     pddl_trial_num = len(existing_pddl) + 1
     pddl_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     trial_pddl_path = os.path.join(gen_problems_dir, f"problem_trial_{pddl_trial_num:03d}_{pddl_timestamp}.pddl")
@@ -225,10 +227,8 @@ def main():
         f.write(problem_pddl)
     print(f"📁 Saved trial problem file to: {trial_pddl_path}")
 
-    # Save domain and problem files in root for solver execution
-    with open(os.path.join(repo_root, "domain.pddl"), "w") as f:
-        f.write(domain_pddl)
-    with open(os.path.join(repo_root, "problem.pddl"), "w") as f:
+    # Save canonical latest problem file in experiments/generated_problems
+    with open(os.path.join(gen_problems_dir, "problem.pddl"), "w") as f:
         f.write(problem_pddl)
 
     # -------------------------------------------------------------------------
@@ -287,7 +287,7 @@ def main():
 
     # Render Behavior Tree diagram if requested
     if args.render_bt:
-        images_dir = os.path.join(repo_root, "images")
+        images_dir = os.path.join(repo_root, "Docs", "pictures")
         render_bt(root=root_node, name=args.bt_image_name, target_dir=images_dir)
 
     # -------------------------------------------------------------------------

@@ -141,7 +141,7 @@ def wrap_with_goal_check(
 def render_bt(
     root: py_trees.behaviour.Behaviour,
     name: str = "behavior_tree",
-    target_dir: str = "images",
+    target_dir: str = os.path.join("Docs", "pictures"),
 ) -> str:
     """
     Render a py_trees Behavior Tree as a Graphviz diagram (.dot, .png, .svg).
@@ -178,7 +178,7 @@ def build_bt_from_pddl_plan(
     wrap_goal_check: bool = False,
     render: bool = False,
     render_name: str = "behavior_tree",
-    render_dir: str = "images",
+    render_dir: str = os.path.join("Docs", "pictures"),
     **kwargs,
 ) -> py_trees.behaviour.Behaviour:
     """

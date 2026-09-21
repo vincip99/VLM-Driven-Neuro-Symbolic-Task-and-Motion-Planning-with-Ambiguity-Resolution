@@ -11,9 +11,9 @@
     "target_locations": [
       "sorting_bin"
     ],
-    "is_ambiguous": true,
-    "vlm_grounding_time": 16.933,
-    "llm_first_pass_time": 18.397,
+    "is_ambiguous": false,
+    "vlm_grounding_time": 0.402,
+    "llm_first_pass_time": 0.812,
     "first_pass_valid": true,
     "first_pass_feasible": true,
     "first_pass_error": "None",
@@ -21,12 +21,132 @@
     "feedback_success": true,
     "fd_parser_error": false,
     "fd_success": true,
-    "fd_solve_time": 0.0893,
+    "fd_solve_time": 0.1485,
     "plan_length": 2,
     "plan_actions": [
       "(pick red_can)",
       "(place red_can sorting_bin)"
     ],
-    "problem_pddl": "(define (problem manipulation-task)\n  (:domain manipulation)\n  (:objects\n    red_can - obj\n    sorting_bin - location\n  )\n  (:init\n    (on-table red_can)\n  )\n  (:goal (and\n    (on red_can sorting_bin)\n  ))\n)\n"
+    "problem_pddl": "(define (problem trial-001)\n  (:domain manipulation)\n  (:objects\n    red_can - obj\n    sorting_bin - location\n  )\n  (:init\n    (on-table red_can)\n  )\n  (:goal (and\n    (on red_can sorting_bin)\n  ))\n)\n"
+  },
+  {
+    "trial_id": 2,
+    "name": "single_cube_pot",
+    "category": "Tier 1: Single-Object",
+    "prompt": "Please take the yellow cube and place it into the pot.",
+    "num_objects": 1,
+    "task_objects": [
+      "yellow_cube"
+    ],
+    "target_locations": [
+      "pot"
+    ],
+    "is_ambiguous": false,
+    "vlm_grounding_time": 0.545,
+    "llm_first_pass_time": 0.765,
+    "first_pass_valid": true,
+    "first_pass_feasible": true,
+    "first_pass_error": "None",
+    "retries_used": 0,
+    "feedback_success": true,
+    "fd_parser_error": false,
+    "fd_success": true,
+    "fd_solve_time": 0.0821,
+    "plan_length": 2,
+    "plan_actions": [
+      "(pick yellow_cube)",
+      "(place yellow_cube pot)"
+    ],
+    "problem_pddl": "(define (problem trial-002)\n  (:domain manipulation)\n  (:objects\n    yellow_cube - obj\n    pot - location\n  )\n  (:init\n    (on-table yellow_cube)\n  )\n  (:goal (and\n    (on yellow_cube pot)\n  ))\n)\n"
+  },
+  {
+    "trial_id": 3,
+    "name": "single_can_table_relocate",
+    "category": "Tier 1: Single-Object",
+    "prompt": "Move the blue can onto the table.",
+    "num_objects": 1,
+    "task_objects": [
+      "blue_can"
+    ],
+    "target_locations": [
+      "table"
+    ],
+    "is_ambiguous": false,
+    "vlm_grounding_time": 0.403,
+    "llm_first_pass_time": 0.558,
+    "first_pass_valid": true,
+    "first_pass_feasible": true,
+    "first_pass_error": "None",
+    "retries_used": 0,
+    "feedback_success": true,
+    "fd_parser_error": false,
+    "fd_success": true,
+    "fd_solve_time": 0.0831,
+    "plan_length": 2,
+    "plan_actions": [
+      "(pick blue_can)",
+      "(place blue_can table)"
+    ],
+    "problem_pddl": "(define (problem trial-003)\n  (:domain manipulation)\n  (:objects\n    blue_can - obj\n    table - location\n  )\n  (:init\n    (on-table blue_can)\n  )\n  (:goal (and\n    (on blue_can table)\n  ))\n)\n"
+  },
+  {
+    "trial_id": 4,
+    "name": "store_inside_phrasing_can",
+    "category": "Tier 1: Single-Object",
+    "prompt": "Grab the green can and store it inside the sorting bin.",
+    "num_objects": 1,
+    "task_objects": [
+      "green_can"
+    ],
+    "target_locations": [
+      "sorting_bin"
+    ],
+    "is_ambiguous": false,
+    "vlm_grounding_time": 0.464,
+    "llm_first_pass_time": 0.68,
+    "first_pass_valid": false,
+    "first_pass_feasible": false,
+    "first_pass_error": "Predicate Hallucination",
+    "retries_used": 1,
+    "feedback_success": true,
+    "fd_parser_error": false,
+    "fd_success": true,
+    "fd_solve_time": 0.079,
+    "plan_length": 2,
+    "plan_actions": [
+      "(pick green_can)",
+      "(place green_can sorting_bin)"
+    ],
+    "problem_pddl": "(define (problem trial-004)\n  (:domain manipulation)\n  (:objects\n    green_can - obj\n    sorting_bin - location\n  )\n  (:init\n    (on-table green_can)\n  )\n  (:goal (and\n    (on green_can sorting_bin)\n  ))\n)\n"
+  },
+  {
+    "trial_id": 5,
+    "name": "deposit_block_pot",
+    "category": "Tier 1: Single-Object",
+    "prompt": "Deposit the purple cube into the pot receptacle.",
+    "num_objects": 1,
+    "task_objects": [
+      "purple_cube"
+    ],
+    "target_locations": [
+      "pot"
+    ],
+    "is_ambiguous": false,
+    "vlm_grounding_time": 0.553,
+    "llm_first_pass_time": 0.5,
+    "first_pass_valid": true,
+    "first_pass_feasible": true,
+    "first_pass_error": "None",
+    "retries_used": 0,
+    "feedback_success": true,
+    "fd_parser_error": false,
+    "fd_success": true,
+    "fd_solve_time": 0.0785,
+    "plan_length": 2,
+    "plan_actions": [
+      "(pick purple_cube)",
+      "(place purple_cube pot)"
+    ],
+    "problem_pddl": "(define (problem trial-005)\n  (:domain manipulation)\n  (:objects\n    purple_cube - obj\n    pot - location\n  )\n  (:init\n    (on-table purple_cube)\n  )\n  (:goal (and\n    (on purple_cube pot)\n  ))\n)\n"
   }
 ]
