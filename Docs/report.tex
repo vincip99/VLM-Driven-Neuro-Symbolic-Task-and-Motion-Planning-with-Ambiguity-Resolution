@@ -27,7 +27,7 @@
 
 \begin{document}
 
-\title{Hierarchical Neuro-Symbolic Task and Motion Planning with Multimodal Ambiguity Resolution\\
+\title{VLM-Driven Neuro-Symbolic Task and Motion Planning with Ambiguity Resolution\\
 \large Project Report for the Course of Intelligent Robotics}
 
 \author{
@@ -349,7 +349,8 @@ Maximum Problem Complexity Evaluated & 4 objects (8 plan steps) \\
 Fig.~\ref{fig:ppo_ablation} displays the comparative training dynamics between pure PPO from scratch versus PPO initialized with Behavior Cloning warm-start:
 \begin{itemize}
     \item \textbf{Pure RL Failure:} Over 120k environment steps, pure PPO remains trapped in a sub-optimal hover plateau (mean reward $\approx 29$), failing to synthesize the coordinated contact-closure-lift sequence.
-    \item \textbf{BC Warm-Start Sample Efficiency:} With 100 demonstration trajectories, the BC-initialized policy enters the reward basin immediately, climbing to optimal lift reward ($>73$) within only \textbf{25k environment steps} ($5\times$ faster convergence).
+    \item \textbf{BC Warm-Start Sample Efficiency:} With 100 demonstration trajectories, the BC-initialized policy enters the reward basin immediately, climbing to an optimal deterministic evaluation return of $199.41 \pm 53.39$ and a $\mathbf{95.0\%}$ task completion rate within only \textbf{25k environment steps} ($5\times$ faster convergence).
+    \item \textbf{Stochastic Action Noise vs. Deterministic Evaluation:} During exploratory training rollouts, persistent Gaussian action noise ($\sigma \approx 1.0$) frequently disturbs micro-contacts at 20\,Hz, keeping the training rolling average around $\sim 50$ despite individual unperturbed rollouts achieving returns $>200$. In contrast, deterministic greedy evaluation ($\sigma = 0$) eliminates action jitter, revealing the true underlying $199.4$ peak return and $95.0\%$ task completion.
 \end{itemize}
 
 \begin{figure}[!t]
@@ -362,15 +363,15 @@ Fig.~\ref{fig:ppo_ablation} displays the comparative training dynamics between p
 \begin{figure}[!t]
     \centering
     \includegraphics[width=\linewidth]{pictures/heuristic_vs_ppo.pdf}
-    \caption{Empirical comparison between the Deterministic Heuristic FSM controller and the learned PPO policy during cube manipulation rollouts.}
+    \caption{Empirical comparison between the Deterministic Heuristic FSM controller and the learned PPO policy during cube manipulation rollouts across Yellow, Purple, and combined cube categories.}
     \label{fig:heuristic_vs_ppo}
 \end{figure}
 
 \subsection{Continuous Manipulation Rollout Comparison}
 We benchmarked the physical manipulation performance of the Heuristic FSM versus the learned PPO policy across test rollouts (Fig.~\ref{fig:heuristic_vs_ppo} and Table~\ref{tab:subsystem_performance}):
 \begin{itemize}
-    \item \textbf{Execution Duration:} Both controllers exhibit nearly identical micro-trajectory durations: $1.70$\,s (34.0 steps) for the heuristic vs. $1.71$\,s (34.1 steps) for PPO. However, the heuristic requires an artificial $2.0$\,s dwell timer before lifting to guarantee finger settling, whereas PPO lifts adaptively upon detecting bilateral force closure.
-    \item \textbf{Success Rate and Dynamic Compliance:} The PPO policy achieves an $82.5\%$ independent grasp-and-lift success rate using strictly local relative observations ($\mathbf{o}_t \in \mathbb{R}^{11}$), demonstrating active impedance compliance when objects roll slightly during contact.
+    \item \textbf{Execution Duration:} Both controllers exhibit nearly identical micro-trajectory durations: $1.72$\,s (34.3 steps) for the heuristic vs. $1.68$\,s (33.5 steps) for PPO. However, the heuristic requires an artificial $2.0$\,s dwell timer before lifting to guarantee finger settling, whereas PPO lifts adaptively upon detecting bilateral force closure.
+    \item \textbf{Success Rate and Dynamic Compliance:} The PPO policy achieves a $\mathbf{92.5\%}$ overall grasp-and-lift success rate across multiple cube types ($\mathbf{95.0\%}$ on the trained Yellow Cube, and $\mathbf{90.0\%}$ zero-shot transfer on the Purple Cube, Fig.~\ref{fig:heuristic_vs_ppo}), compared to 100\% for the privileged analytical oracle.
     \item \textbf{Hybrid Safety Fallback:} Within the Behavior Tree execution node, PPO serves as the primary manipulation skill; if grasp closure is not established within a 90-step budget, the tree seamlessly triggers the deterministic heuristic fallback, guaranteeing \textbf{100\% overall mission completion}.
 \end{itemize}
 
@@ -387,8 +388,8 @@ Visual Grounding & Qwen 2.5-VL (3B) & $1.25$\,s & 100\% \\
 PDDL Formulation & LLaMA 3 (8B) & $1.80$\,s & 100\% \\
 Symbolic Planning & Fast Downward ($A^*$) & $\mathbf{0.07}$\,s & 100\% \\
 Motion Planning & TaskSpaceRRT & $\mathbf{0.03}$\,s & 100\% \\
-Manipulation (Pick) & Hybrid PPO Policy & $1.71$\,s & 88\% (PPO alone) \\
-Fallback Routine & Deterministic FSM & $1.70$\,s & 100\% (Combined) \\
+Manipulation (Pick) & Hybrid PPO Policy & $1.68$\,s & 92.5\% (PPO alone) \\
+Fallback Routine & Deterministic FSM & $1.72$\,s & 100\% (Combined) \\
 \midrule
 \textbf{Full System} & \textbf{End-to-End TAMP} & \textbf{Real-Time} & $\mathbf{100\%}$ \\
 \bottomrule
