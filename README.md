@@ -140,11 +140,15 @@ Clone the repository and activate the pre-configured conda environment:
 
 ```bash
 # Clone the repository
-git clone https://github.com/vincip/vlm_pddl_tamp.git
-cd vlm_pddl_tamp
+git clone https://github.com/vincip99/VLM-Driven-Neuro-Symbolic-Task-and-Motion-Planning-with-Ambiguity-Resolution.git
+cd VLM-Driven-Neuro-Symbolic-Task-and-Motion-Planning-with-Ambiguity-Resolution
 
-# Activate the conda environment
+# Option A: Create the Conda environment from environment.yml (Recommended)
+conda env create -f environment.yml
 conda activate robomimic_venv
+
+# Option B: Or install dependencies via requirements.txt in a Python 3.8 environment
+pip install -r requirements.txt
 
 # Ensure local packages (robosuite and robomimic) are installed in editable compatibility mode
 pip install -e ./robosuite -e ./robomimic --no-deps --config-settings editable_mode=compat
