@@ -1,4 +1,4 @@
-# Hierarchical VLM Planning and Control with Ambiguity Resolution
+# VLM-Driven Neuro-Symbolic Task and Motion Planning with Ambiguity Resolution
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/release/python-380/)
 [![Robosuite 1.5.1](https://img.shields.io/badge/robosuite-1.5.1-orange.svg)](https://robosuite.ai/)
