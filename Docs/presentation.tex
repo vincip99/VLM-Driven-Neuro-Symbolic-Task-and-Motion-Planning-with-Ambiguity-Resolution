@@ -60,7 +60,7 @@
     \textbf{LAUREA IN INGEGNERIA DELL'AUTOMAZIONE}
     
     \vspace{0.4cm}
-    {\Large\textcolor{myred}{\textbf{Hierarchical VLMs Planning and Control with Ambiguity resolution}}}
+    {\Large\textcolor{myred}{\textbf{VLM-Driven Neuro-Symbolic Task and Motion Planning with Ambiguity Resolution}}}
     
     \vfill
     
@@ -99,6 +99,53 @@
 % Executive Layer: introduction. BTs intro. My implementation
 % Reactive Layer: rrt motion planner. rl and il
 
+\section{Introduction}
+\begin{frame}[t]
+    \frametitle{Project Objective}
+    \footnotesize
+    A Neuro-Symbolic Task and Motion Planning (TAMP) architecture bridging natural language reasoning with reactive physical execution.
+    
+    \vspace{0.15cm}
+    \begin{columns}[T]
+        % Left Column: Project Goals
+        \begin{column}{0.50\textwidth}
+            \begin{block}{Core Features}
+                \begin{itemize}\scriptsize
+                    \item \textbf{Ambiguity Resolution:} Proactively identify and resolve referential ambiguities in human prompts (e.g., \textit{"Which cube?"}) via multi-turn visual dialogue prior to physical execution.
+                    \item \textbf{Symbolic Verification:} Generate PDDL plans from the semantic perception pipline in order to guarantee causal correctness and eliminate VLM hallucinations.
+                    \item \textbf{Dynamic Behavior Tree:} Execute discrete symbolic plans using dynamically generated Behavior Trees, continuous condition monitoring, and auto-recovery fallbacks.
+                    \item \textbf{Hybrid Manipulation:} Combine Task-Space RRT for collision-free transit with RL (Proximal Policy Optimization) for compliant, contact-rich grasping.
+                \end{itemize}
+            \end{block}
+        \end{column}
+
+        % Right Column: Simulation Visuals
+        \begin{column}{0.48\textwidth}
+            \begin{block}{Scenario: \textit{TaskSorting Arena}}
+                \scriptsize
+                The simulation environment is built on top of the Robosuite library with further customizations.
+                
+                \vspace{0.08cm}
+                \begin{center}
+                    \includegraphics[width=0.80\linewidth]{pictures/task_sorting_arena_isometric.png}
+                \end{center}
+                
+                
+                \setbeamercolor{graybox}{bg=darkblue!8,fg=black}
+                \begin{beamercolorbox}[wd=\linewidth,sep=3pt,rounded=true]{graybox}
+                \begin{itemize}\tiny
+                    \setlength\itemsep{1.5pt}
+                    \item \textbf{Robot Hardware:} 7-DoF Franka Emika Panda.
+                    \item \textbf{Scene Objects:} Cubes, cans and bins.
+                    \item \textbf{Physics Engine:} MuJoCo headless continuous simulation.
+                    \item \textbf{Perception:} Dual-view cameras (Top-Down + Frontal).
+                \end{itemize}
+                \end{beamercolorbox}
+            \end{block}
+        \end{column}
+    \end{columns}
+\end{frame}
+
 \section{Deliberative Layer}
 \begin{frame}
     \frametitle{Neuro-Symbolic Planning architecture}
@@ -113,14 +160,14 @@
 \begin{frame}[t]
 \frametitle{Perception: Visual Grounding \& Ambiguity Resolution}
 \footnotesize
-Grounds natural language human instructions in the observed scene and explicitly reasons about task ambiguity through multi-turn visual dialogue.
+Grounds natural language human instructions in the observed scene and explicitly reasons about task ambiguity through multi-turn visual dialogue. It eliminates hallucinated assumptions before symbolic deliberation
 
 \vspace{0.1cm}
 \begin{columns}[T]
     \begin{column}{0.55\textwidth}
-        \begin{block}{Disambiguation Pipeline}
+        \begin{block}{Ambiguity Resolution Pipeline}
             \begin{itemize}\scriptsize
-                \item \textbf{Visual Scene Grounding (Qwen 2.5-VL):}
+                \item \textbf{VLM Visual Scene Grounding (Qwen 2.5-VL):}
                 Parses the camera frame into entity schemas:
                 \begin{itemize}\tiny
                     \item \texttt{task\_objects}: Manipulable items (\textit{e.g., cans, cubes}).
@@ -138,155 +185,195 @@ Grounds natural language human instructions in the observed scene and explicitly
                 Prompts the user with a targeted question, appends response to chat history, and disambiguates the scene.
 
                 \item \textbf{Symbols Grounding:}
-                Outputs clean symbols $\{\text{Objects}, \text{Locations}\}$ directly to the LLaMA-3 PDDL synthesizer.
+                Outputs clean symbols $\{\text{Objects}, \text{Locations}\} \subset O_{\text{obj}}, O_{\text{loc}}$ directly to the LLaMA-3 PDDL synthesizer.
             \end{itemize}
         \end{block}
     \end{column}
 
     \begin{column}{0.45\textwidth}
-        \begin{block}{Clarification Example}
+        \begin{block}{Disambiguation Example}
             \scriptsize
-            \textbf{Ambiguous Human Prompt:} \\
-            \textit{``Put the cube in the container.''}
+            % Graphical layout colors
+            \setbeamercolor{robotmsg}{bg=gray!20,fg=black}
+            \setbeamercolor{humanmsg}{bg=darkblue!15,fg=black}
+            \setbeamercolor{termbox}{bg=white,fg=black} % White background for terminal text
+
+            \begin{beamercolorbox}[sep=4pt,rounded=true,wd=0.92\linewidth]{humanmsg}
+                \tiny \textbf{Human:} \textit{``Put the cube in the container.''}
+            \end{beamercolorbox}
             
             \vspace{0.1cm}
-            \textbf{Scene Detection (Qwen 2.5-VL):} \\
-            $\bullet$ Objects: \texttt{[yellow\_cube, purple\_cube]} \\
-            $\bullet$ Locations: \texttt{[sorting\_bin, pot]} \\
-            $\implies$ \textcolor{myred}{\textbf{Ambiguity Flagged: True}}
-
-            \vspace{0.1cm}
-            \setbeamercolor{dialogbox}{bg=blue!8,fg=black}
-            \begin{beamercolorbox}[sep=4pt,rounded=true]{dialogbox}
-                \tiny
-                \textbf{Robot:} \textit{``Which cube should I move, the yellow or the purple one? And into the pot or the bin?''} \\
-                \textbf{Human:} \textit{``The yellow cube into the pot.''}
+            % Terminal font style for Scene Detection response
+            \begin{beamercolorbox}[sep=4pt,wd=\linewidth]{termbox}
+                \ttfamily\tiny
+                [Visual Scene Grounding] \\
+                task\_objects: [yellow\_cube, purple\_cube]\\
+                target\_locations: [sorting\_bin, pot]\\
+                \textcolor{myred}{Ambiguity\_Flagged: True}
             \end{beamercolorbox}
 
+            \vspace{0.15cm}
+            \begin{beamercolorbox}[sep=4pt,rounded=true,wd=0.92\linewidth]{robotmsg}
+                \tiny \textbf{Robot:} \textit{``Which cube should I move, the yellow or the purple one? And into the pot or the bin?''}
+            \end{beamercolorbox}
+            
+            \vspace{0.05cm}
+            \makebox[\linewidth][r]{% Push the human message bubble to the right
+                \begin{beamercolorbox}[sep=4pt,rounded=true,wd=0.75\linewidth]{humanmsg}
+                    \tiny \textbf{Human:} \textit{``The yellow cube into the pot.''}
+                \end{beamercolorbox}%
+            }
             \vspace{0.1cm}
-            \textbf{Disambiguated Symbols for PDDL:} \\
-            $\bullet$ Target: \texttt{yellow\_cube} $\to$ \texttt{(type obj)} \\
-            $\bullet$ Destination: \texttt{pot} $\to$ \texttt{(type location)}
-        \end{block}
 
-        \vspace{0.1cm}
-        \setbeamercolor{verdictbox}{bg=darkblue,fg=white}
-        \begin{beamercolorbox}[sep=3pt,center,shadow=true,rounded=true]{verdictbox}
-            \tiny \textbf{Key Benefit:} Eliminates hallucinated assumptions before symbolic deliberation.
-        \end{beamercolorbox}
+            % Terminal font style for PDDL Output response
+            \begin{beamercolorbox}[sep=4pt,wd=\linewidth]{termbox}
+                \ttfamily\tiny
+                [Symbols Grounding] \\
+                target: yellow\_cube $\to$ (type obj)\\
+                destination: pot $\to$ (type location)
+            \end{beamercolorbox}
+        \end{block}
     \end{column}
 \end{columns}
 \end{frame}
 
 \begin{frame}[t]
 \frametitle{VLM Architectures: Dual-Encoder Foundations}
-    % https://www.ibm.com/think/topics/vision-language-models?utm_medium=OSocial&utm_source=Youtube&utm_content=WAIWW&utm_id=YT-101-What-are-vision-language-models-(VLMs)
-    % --- Left Column: VLM Schema Image ---
 \footnotesize
 Vision-Language Models (VLMs) integrate visual perception with linguistic reasoning by bridging continuous visual feature spaces and discrete language token spaces.
 
-\vspace{0.15cm}
+\vspace{0.2cm}
 \begin{columns}[T]
-    \begin{column}{0.5\textwidth}
+    \begin{column}{0.48\textwidth}
         \begin{figure}
             \centering
-            \includegraphics[width=\linewidth]{pictures/llama3.png}
-            \caption{Standard Dual-Encoder VLM Architecture}
+            % Adjusting width slightly for better margin breathing room
+            \includegraphics[width=0.95\linewidth]{pictures/llama3.png}
+            \vspace{-0.1cm}
+            \caption{\scriptsize Standard Dual-Encoder VLM Architecture}
         \end{figure}
     \end{column}
 
     \begin{column}{0.5\textwidth}
+        \setbeamercolor{vlmbox}{bg=darkblue,fg=white}
         
-        \setbeamercolor{verdictbox}{bg=darkblue,fg=white}
-        \begin{beamercolorbox}[sep=4pt,shadow=true,rounded=true]{verdictbox}
-            \usebeamerfont{title} \small \textbf{Language Encoder (Transformer)} \\ 
-            \vspace{0.05cm} 
-            \tiny % Using tiny to fit two boxes vertically on the right
+        \begin{beamercolorbox}[sep=5pt,shadow=true,rounded=true]{vlmbox}
+            \textbf{Language Encoder (Transformer)}
+            \vspace{0.1cm} 
+            \scriptsize
             \begin{itemize}
-                \setlength\itemsep{0em}
-                \item Encoders transform sequences into numerical representation called \textbf{embeddings}.
-                \item A \textbf{self-attention mechanism} allows focus on important tokens.
-                \item \textbf{Decoders} output the most statistically probable output.
+                \setlength\itemsep{0.2em}
+                \item Transforms discrete sequences into continuous numerical \textbf{embeddings}.
+                \item Utilizes \textbf{self-attention mechanisms} to dynamically weigh token importance.
+                \item \textbf{Decoders} auto-regressively generate the most statistically probable sequence.
             \end{itemize}
         \end{beamercolorbox}
         
-        \vspace{0.3cm} % Spacing between the two text boxes
+        \vspace{0.3cm}
         
-        \setbeamercolor{verdictbox}{bg=darkblue,fg=white}
-        \begin{beamercolorbox}[sep=4pt,shadow=true,rounded=true]{verdictbox}
-            \usebeamerfont{title} \small \textbf{Vision Encoder (CNN / ViT)} \\
-            \vspace{0.05cm}
-            \tiny % Using tiny to fit two boxes vertically on the right
+        \begin{beamercolorbox}[sep=5pt,shadow=true,rounded=true]{vlmbox}
+            \textbf{Vision Encoder (CNN / ViT)}
+            \vspace{0.1cm}
+            \scriptsize
             \begin{itemize}
-                \setlength\itemsep{0em}
-                \item Typically utilizes Convolutional Neural Networks (CNNs) or Visual Transformers (ViTs).
-                \item A ViT processes an image into patches and treats them as sequences, akin to tokens.
+                \setlength\itemsep{0.2em}
+                \item Extracts hierarchical spatial features via Convolutional Neural Networks or Vision Transformers.
+                \item ViTs segment images into non-overlapping patches, processing them as sequential tokens.
             \end{itemize}
         \end{beamercolorbox}
     \end{column}
 \end{columns}
-
-\vspace{0.4cm}
-\centering
-\fbox{\scriptsize Image $\mathbf{I}$ + Text $\mathbf{T} \xrightarrow{\quad\text{VLM}\quad}$ Structured Output $\mathbf{Y}$}
 \end{frame}
 
-\begin{frame}
-    \frametitle{VLM Training methodologies}
-    It is the mechanism that allow fusing information from both vision and language encoders so to correlate images with text and make decision on the 2 modalities togheter:
-    \begin{itemize}
-        \item Contrasive learning: uses joint or shared embedding space. The VLM is trained on datasets of image-text pairs and learns to minimize the distance between embeddings of matching pairs and maximize it for nonmatching pairs.
-        \item Masking: models learn to predict randomly obscured parts of an input text or image.
-        \item Generative model training: entails learning to generate new data
-        \item Pretrained models: A pretrained LLM and a pretrained vision encoder can be used, with an added mapping network layer that aligns or projects the visual representation of an image to the LLM’s input space.
-    \end{itemize}
+
+\begin{frame}[t]
+    \frametitle{VLM Training Methodologies}
+    \footnotesize
+    Training fuses information from vision and language encoders, correlating visual features with text semantics to enable unified multimodal reasoning.
+
+    \vspace{0.3cm}
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \begin{block}{Contrastive Learning}
+                \scriptsize
+                Aligns modalities in a shared embedding space. The model minimizes the latent distance between matching image-text pairs while maximizing it for non-matching pairs.
+            \end{block}
+            
+            \vspace{0.1cm}
+            \begin{block}{Masked Modeling}
+                \scriptsize
+                Forces the model to reconstruct randomly obscured image patches or masked text tokens, learning robust contextual representations.
+            \end{block}
+        \end{column}
+
+        \begin{column}{0.48\textwidth}
+            \begin{block}{Generative Training}
+                \scriptsize
+                Optimizes the model to auto-regressively generate text conditioned on visual inputs (e.g., image captioning or visual question answering).
+            \end{block}
+
+            \vspace{0.1cm}
+            \begin{block}{Pretrained Projection}
+                \scriptsize
+                Freezes a pretrained LLM and Vision Encoder, training only a lightweight mapping network (e.g., MLP projector) to translate visual embeddings into the LLM's input space.
+            \end{block}
+        \end{column}
+    \end{columns}
 \end{frame}
 
-\begin{frame}
+
+\begin{frame}[t]
 \frametitle{Qwen 2.5-VL Architecture}
-\begin{columns}[T] % [T] aligns columns at the top
-    % https://towardsai.com/p/machine-learning/qwen2-5-vl-a-hands-on-code-walkthrough
-    \begin{column}{0.5\textwidth}
-        \begin{itemize}
-            \item Qwen2.5 LM Decoder
-            \item ViT:3D convolution to split input visual data into a series of 14*14 patches
-            \item process video info: preprocessor for dynamic image size adjustment, dynamic frame extraction
-        \end{itemize}
-        \vspace{0.4cm}
+\footnotesize
+A state-of-the-art multimodal foundation model utilizing a dynamic-resolution Vision Transformer coupled with a robust language decoder.
+
+\vspace{0.1cm}
+\begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+        \vspace{0.2cm}
+        \begin{block}{Core Components}
+            \scriptsize
+            \begin{itemize}
+                \item \textbf{Qwen2.5 LM Decoder:} Advanced autoregressive language model for reasoning and generation.
+                \item \textbf{Vision Transformer (ViT):} Uses 3D convolutions to efficiently process visual data into sequences of $14 \times 14$ patches.
+                \item \textbf{Dynamic Preprocessor:} Adjusts image size dynamically to preserve native aspect ratios and extracts frames optimally for video inputs.
+            \end{itemize}
+        \end{block}
     \end{column}
 
-    \begin{column}{0.5\textwidth}
+    \begin{column}{0.48\textwidth}
         \begin{figure}
             \centering
-            \includegraphics[width=\textwidth]{pictures/qwen2.5vl_arc.jpeg}
+            \includegraphics[width=\linewidth]{pictures/qwen2.5vl_arc.jpeg}
         \end{figure}
     \end{column}
 \end{columns}
-
 
 \vspace{0.2cm}
 \setbeamercolor{verdictbox}{bg=darkblue,fg=white}
-\begin{beamercolorbox}[sep=8pt,center,shadow=true,rounded=true]{verdictbox}
-    \usebeamerfont{title} \small \textbf{Why this choice?} \\ 
+\begin{beamercolorbox}[sep=6pt,center,shadow=true,rounded=true]{verdictbox}
+    \textbf{Design Rationale for this Architecture} \\ 
+    \vspace{0.1cm}
+    \raggedright
     \scriptsize 
-    \begin{itemize}\small
+    \begin{itemize}
         \setlength\itemsep{0.1em}
-        \item \textbf{Dynamic Resolution (Naive ViT):} Preserves small object aspect ratios without distortion.
+        \item \textbf{Dynamic Resolution:} Preserves small object aspect ratios without distortion.
         \item \textbf{Local Real-Time Inference:} Runs locally via Ollama ($1.25\,\text{s}$ latency, zero API dependency).
-        \item \textbf{High Spatial Fidelity:} Superior grounding of small manipulable items and receptacle boundaries.
+        \item \textbf{High Spatial Fidelity:} Superior grounding of manipulable items and receptacle boundaries.
     \end{itemize}
 \end{beamercolorbox}
 \end{frame}
 
 \begin{frame}[t]
-\frametitle{Symbolic Deliberation: PDDL Formulation}
+\frametitle{Symbolic Planning: PDDL Formulation}
 \footnotesize
-Decouples domain physics from task specification using \textbf{PDDL} (Planning Domain Definition Language), guaranteeing causal correctness before robot motion.
+\textbf{Symbolic Planning} uses formal logic to find a sequence of actions that transition a system from an initial state to a target goal state. \textbf{PDDL} (Planning Domain Definition Language) is the standard modeling language for this, decoupling the robot's physical capabilities from specific task specifications to guarantee causal correctness before execution.
+
 \vspace{0.15cm}
 \begin{columns}[T]
-    % Left Column: Formal Definitions
-    \begin{column}{0.50\textwidth}
-        \begin{block}{Formal Planning Tuple $\mathcal{P} = (\mathcal{D}, s_0, G)$}
+        \begin{column}{0.50\textwidth}
+        \begin{block}{Formal Planning Tuple $\mathcal{P} = (\mathcal{D}, O, s_0, G)$}
             \begin{itemize}\scriptsize
                 \item \textbf{Planning Domain $\mathcal{D} = (\mathcal{L}, \mathcal{A})$ [Static]:}
                 \begin{itemize}\tiny
@@ -294,8 +381,10 @@ Decouples domain physics from task specification using \textbf{PDDL} (Planning D
                     \item $\mathcal{A}$: Action schemas with preconditions and effects.
                     \item \textit{Fixed and verified offline} (robot capability bounds).
                 \end{itemize}
-                \item \textbf{Planning Problem $\mathcal{P}$ [Dynamic]:}
+                \vspace{0.06cm}
+                \item \textbf{Planning Problem Instance [Dynamic]:}
                 \begin{itemize}\tiny
+                    \item $O$: Grounded universe of objects and locations.
                     \item $s_0$: Completely grounded initial state from VLM.
                     \item $G$: Target goal conditions from user task.
                     \item \textit{Synthesized online} via LLaMA~3 from perception.
@@ -303,74 +392,129 @@ Decouples domain physics from task specification using \textbf{PDDL} (Planning D
             \end{itemize}
         \end{block}
         
+        \vspace{0.12cm}
         \setbeamercolor{verdictbox}{bg=darkblue,fg=white}
-        \begin{beamercolorbox}[sep=3pt,center,shadow=true,rounded=true]{verdictbox}
+        \begin{beamercolorbox}[sep=4pt,center,shadow=true,rounded=true]{verdictbox}
             \tiny \textbf{Key Principle:} Domain physics are fixed; only state and goal are queried online.
         \end{beamercolorbox}
     \end{column}
-    % Right Column: Concrete Robotic Domain
+    
     \begin{column}{0.48\textwidth}
-        \begin{block}{Manipulation Domain}
-            \scriptsize
-            \textbf{Grounded State Predicates $\mathcal{L}$:}
-            \begin{itemize}\tiny
-                \item \texttt{(on ?obj ?loc)}: Object placed on table/bin/pot.
-                \item \texttt{(holding ?obj)}: Robot gripper contact established.
-                \item \texttt{(on-table ?obj)}: Object resting on tabletop.
-            \end{itemize}
-            \vspace{0.05cm}
-            \textbf{Robotic Action Schemas $\mathcal{A}$:}
-            \begin{itemize}\tiny
-                \item \texttt{pick(?o)}:
-                \begin{itemize}\tiny
-                    \item Pre: \texttt{(on-table ?o)}, \texttt{(not (holding ?o))}
-                    \item Eff: \texttt{(holding ?o)}, \texttt{(not (on-table ?o))}
-                \end{itemize}
-                \item \texttt{place(?o, ?loc)}:
-                \begin{itemize}\tiny
-                    \item Pre: \texttt{(holding ?o)}
-                    \item Eff: \texttt{(on ?o ?loc)}, \texttt{(not (holding ?o))}
-                \end{itemize}
-            \end{itemize}
+        \begin{block}{Manipulation Domain Definition (\texttt{domain.pddl})}
+            \setbeamercolor{termbox}{bg=white,fg=black}
+            \begin{beamercolorbox}[sep=4pt,rounded=true,shadow=true,wd=\linewidth]{termbox}
+                \ttfamily\tiny
+                ; Grounded State Predicates $\mathcal{L}$\\
+                (holding ?obj)\\
+                (on-table ?obj)\\
+                (on ?obj ?loc)\\[0.15cm]
+                ; Robotic Action Schemas $\mathcal{A}$\\
+                (:action pick\\
+                \hspace{2mm} :parameters (?o - obj)\\
+                \hspace{2mm} :precondition (and (on-table ?o)\\
+                \hspace{14mm} (not (holding ?o)))\\
+                \hspace{2mm} :effect (and (holding ?o)\\
+                \hspace{10mm} (not (on-table ?o))))\\[0.15cm]
+                (:action place\\
+                \hspace{2mm} :parameters (?o - obj ?loc - location)\\
+                \hspace{2mm} :precondition (holding ?o)\\
+                \hspace{2mm} :effect (and (on ?o ?loc)\\
+                \hspace{10mm} (not (holding ?o))))
+            \end{beamercolorbox}
         \end{block}
     \end{column}
 \end{columns}
-\vspace{0.4cm}
-\textbf{PDDL} (Planning Domain Definition Language) is the standard for Classical AI Planning. To solve planning problems, two main paradigms exist: \textbf{State Space Search} and \textbf{Plan Space Search}.
+\end{frame}
+
+\begin{frame}[t]
+\frametitle{Neuro-symbolic planning: PDDL Problem Synthesis}
+\footnotesize
+While domain physics $\mathcal{D}$ are fixed offline, the planning problem $\mathcal{P} = (\mathcal{D}, O, s_0, G)$ is formulated online. \textbf{LLaMA~3} translates visually grounded symbols and task intent into $(O, s_0, G)$ to complete $\mathcal{P}$.
+
+\vspace{0.05cm}
+\begin{columns}[T]
+    \begin{column}{0.50\textwidth}
+        \begin{block}{Problem Synthesis Workflow}
+            \begin{itemize}\scriptsize
+                \setlength\itemsep{0.45em}
+                \item \textbf{1. Grounded Few-Shot Prompting:} Uses grounded entities ($O_{\text{obj}}, O_{\text{loc}}$), scene state $s_0$, and task $G$ alongside domain $\mathcal{D}$. Enforces strict typing ($O_{\text{obj}} \to \texttt{obj}$, $O_{\text{loc}} \to \texttt{location}$) and maps task goals to domain predicates.
+                \item \textbf{2. Pydantic Validation, Auto-Repair \& Compilation:} Validates LLM output against pydantic \texttt{Problem} schema, auto-correct undeclared symbols, and retries on predicate violations. \texttt{Problem.to\_pddl()} deterministically serializes the verified instance into standard PDDL syntax.
+            \end{itemize}
+        \end{block}
+
+        \vspace{0.05cm}
+        \setbeamercolor{verdictbox}{bg=darkblue,fg=white}
+        \begin{beamercolorbox}[sep=3pt,center,shadow=true,rounded=true]{verdictbox}
+            \tiny \textbf{Key Guarantee:} Structured JSON + Pydantic validation eliminates LLM syntax hallucinations before reaching the planner.
+        \end{beamercolorbox}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+        \begin{block}{Generated Planning Problem (\texttt{problem.pddl})}
+            \setbeamercolor{termbox}{bg=white,fg=black}
+            \begin{beamercolorbox}[sep=3pt,rounded=true,shadow=true,wd=\linewidth]{termbox}
+                \ttfamily\tiny
+                ; Online problem instance $\mathcal{P} = (\mathcal{D}, O, s_0, G)$\\
+                (define (problem manipulation-task)\\
+                \hspace{2mm} (:domain manipulation)\\
+                \hspace{2mm} (:objects\\
+                \hspace{4mm} red\_can yellow\_cube blue\_can - obj\\
+                \hspace{4mm} sorting\_bin pot - location\\
+                \hspace{2mm} )\\
+                \hspace{2mm} (:init\\
+                \hspace{4mm} (on-table red\_can)\\
+                \hspace{4mm} (on-table yellow\_cube)\\
+                \hspace{4mm} (on-table blue\_can)\\
+                \hspace{2mm} )\\
+                \hspace{2mm} (:goal (and\\
+                \hspace{4mm} (on red\_can sorting\_bin)\\
+                \hspace{4mm} (on yellow\_cube pot)\\
+                \hspace{4mm} (on blue\_can sorting\_bin)\\
+                \hspace{2mm} ))\\
+                )
+            \end{beamercolorbox}
+        \end{block}
+    \end{column}
+\end{columns}
 \end{frame}
 
 
 \begin{frame}[t]
     \frametitle{Plan Verification: Fast Downward Solver}
     \footnotesize
-    \textbf{Fast Downward} acts as the symbolic deliberation engine, translating VLM-grounded initial states into verified action sequences via \textbf{Heuristic Forward State-Space Search} in $<0.08\,\text{s}$.
+    \textbf{Fast Downward} acts as the symbolic deliberation engine, using initial states $s_0$, final goal $G$ and Domain specification $\mathcal{D}$ to obtain a verified action sequences via \textbf{Heuristic Forward State-Space Search}.
 
-    \vspace{-0.15cm}
-    % Architecture Flow Banner (Deliberative Layer from VLM-TAMP)
-    \begin{center}
-        \includegraphics[height=1.92cm]{pictures/deliberation_module.pdf}
-    \end{center}
-    \vspace{-0.35cm}
+    \vspace{0.05cm}
     \begin{columns}[T]
-        \begin{column}{0.50\textwidth}
-            \begin{block}{Forward State-Space Search (Progression)}
-                \begin{itemize}\scriptsize
-                    \item \textbf{Search Paradigm:} Operates in state space $\mathcal{S}$ (complete valuations), progressing forward: $s_0 \xrightarrow{a_1} s_1 \to \dots \to s_g \models G$.
-                    \item \textbf{Why Forward Search?} VLM provides a \textit{completely grounded initial state} $s_0$, making progression directly evaluable.
-                    \item \textbf{State Transitions:} Applies applicable action $a$ ($\text{pre}(a) \subseteq s$):
-                    $s' = (s \setminus \text{del}(a)) \cup \text{add}(a)$.
-                    \item \textbf{Neuro-Symbolic Verifier:} Deterministically validates causality, eliminating LLM hallucinations.
-                \end{itemize}
-            \end{block}
+        \begin{column}{0.53\textwidth}
+            \vspace{-0.05cm}
+            \begin{center}
+                \makebox[\linewidth][c]{\includegraphics[width=1.08\linewidth]{pictures/deliberation_module.pdf}}
+            \end{center}
+            
+            \vspace{0.12cm}
+            \setbeamercolor{verdictbox}{bg=darkblue,fg=white}
+            \begin{beamercolorbox}[sep=4pt,center,shadow=true,rounded=true]{verdictbox}
+                \scriptsize \textbf{Deliberation Guarantee:} Computes verified causal action plans in $\mathbf{<0.08\,\text{s}}$ with zero hallucination.
+            \end{beamercolorbox}
         \end{column}
 
-        \begin{column}{0.48\textwidth}
-            \begin{block}{Heuristic Search Engine (\texttt{lama-first})}
+        \begin{column}{0.45\textwidth}
+            \begin{block}{Forward Search \& Heuristics}
                 \begin{itemize}\scriptsize
-                    \item \textbf{Lazy GBFS:} Greedy best-first search deferring node evaluation for high-speed plan discovery.
-                    \item \textbf{Fast-Forward ($h_{\text{FF}}$):} Delete-relaxation on Relaxed Planning Graph ($\text{del}(a) = \emptyset$), estimating remaining action steps.
-                    \item \textbf{Landmark Count ($h_{\text{LM}}$):} Tracks causal landmarks (facts/actions mandatory in \textit{every} valid plan).
-                    \item \textbf{Preferred Operators:} Prunes search branching by prioritizing helpful actions from $h_{\text{FF}}$ and $h_{\text{LM}}$.
+                    \setlength\itemsep{0.20em}
+                    \item \textbf{Search Paradigm:} Progresses forward in state space $\mathcal{S}$: $s_0 \xrightarrow{a_1} s_1 \to \dots \to s_g \models G$.
+                    \item \textbf{Direct Grounding:} Grounded $s_0$ from VLM makes forward state progression directly evaluable.
+                    \item \textbf{State Transitions:} Applies applicable action $a$ ($\text{pre}(a) \subseteq s$):
+                    $s' = (s \setminus \text{del}(a)) \cup \text{add}(a)$.
+                    \vspace{0.06cm}
+                    \item \textbf{Heuristic Engine (LAMA / $h_{\text{FF}}$):}
+                    \begin{itemize}\scriptsize
+                        \setlength\itemsep{0.15em}
+                        \item \textbf{Lazy GBFS:} Greedy best-first search for high-speed plan discovery.
+                        \item \textbf{Dual Heuristics ($h_{\text{FF}} + h_{\text{LM}}$):} Delete-relaxation ($\text{del}(a) = \emptyset$) + causal Landmarks.
+                        \item \textbf{Preferred Operators:} Prunes search branching via helpful actions.
+                    \end{itemize}
                 \end{itemize}
             \end{block}
         \end{column}
@@ -378,29 +522,65 @@ Decouples domain physics from task specification using \textbf{PDDL} (Planning D
 \end{frame}
 
 \begin{frame}[t]
-    \frametitle{PDDL Problem Generation Experiments}
+    \frametitle{PDDL Problem Generation experiments}
     \footnotesize
-    Autonomous synthesis of PDDL Problem files $\mathcal{P} = (\mathcal{D}, s_0, G)$ from natural language instructions and VLM scene grounding, benchmarked across 28 tabletop simulation trials.
+    To bridge perceptual symbols and symbolic planning, the deliberation layer couples \textbf{Pydantic data models} with programmatic domain validation and a reflection loop to eliminate hallucinations.
 
-    \vspace{0.15cm}
+    \vspace{0.04cm}
     \begin{columns}[T]
         \begin{column}{0.50\textwidth}
-            \begin{block}{Generation, Failures \& Auto-Repair}
+            \begin{block}{Structured Pipeline \& Pydantic Schemas}
                 \begin{itemize}\scriptsize
-                    \item \textbf{Structured Formulation:} LLaMA~3 outputs typed JSON validated by Pydantic (\texttt{Problem}, \texttt{PDDLObject}, \texttt{Predicate}) from Qwen~2.5-VL scene groundings.
-                    \item \textbf{Observed Failure Modes (Raw LLM):}
-                    \begin{itemize}\tiny
-                        \item \textit{Predicate Hallucination:} Generates \texttt{(in ?x ?bin)} instead of domain-defined \texttt{(on ?x ?loc)}
-                        \item \textit{Type Mismatches:} Target fixtures classified as \texttt{obj} instead of \texttt{location}.
+                    \setlength\itemsep{0.10em}
+                    \item \textbf{Synthesizer Class (\texttt{AmbresStructured}):}
+                    \newline \texttt{generate\_problem\_json(...)} queries LLaMA~3 with $(s_0, G, O_{\text{obj}}, O_{\text{loc}}, \mathcal{D})$ under few-shot JSON constraints.
+                    \item \textbf{Data Models (\texttt{src.llm2pddl.problem}):}
+                    \begin{itemize}\scriptsize
+                        \setlength\itemsep{0.02em}
+                        \item \texttt{Problem}: Declares \texttt{objects}, \texttt{init}, and \texttt{goal}.
+                        \item \texttt{PDDLObject}: Type enforcement (\texttt{obj}, \texttt{location}).
+                        \item \texttt{Predicate}: Structured facts with arity validation.
                     \end{itemize}
-                    \item \textbf{Automated Feedback Loop:} Programmatic validator parses errors and reprompts LLaMA~3 with exact failure traces (max 5 retries).
-                    \item \textbf{Auto-Healing:} Inferred type assignment for uninstantiated receptacle locations.
+                    \item \textbf{Compilation (\texttt{Problem.to\_pddl()}):}
+                    \newline Deterministically convert the JSON payload schema into standard PDDL formatted text.
                 \end{itemize}
             \end{block}
         \end{column}
 
         \begin{column}{0.48\textwidth}
-            \begin{block}{Empirical Benchmark (28 Trials)}
+            \begin{block}{Closed-Loop Validation \& Auto-Repair}
+                \begin{itemize}\scriptsize
+                    \setlength\itemsep{0.10em}
+                    \item \textbf{Validation Function:}
+                    \newline \texttt{generate\_problem\_with\_retry($\dots, \mathcal{D}$)} verifies predicates and types against $\mathcal{D}$ via regex extraction.
+                    \item \textbf{Handled Failure Modes:}
+                    \begin{itemize}\scriptsize
+                        \setlength\itemsep{0.02em}
+                        \item \textit{Predicate Hallucination:} e.g., \texttt{(in ?x ?bin)} $\notin \mathcal{D}$.
+                        \item \textit{Undeclared Symbols:} Missing object in \texttt{objects}.
+                        \item \textit{Type Inversion:} Receptacle labeled as \texttt{obj}.
+                    \end{itemize}
+                    \item \textbf{Auto-Healing \& Reflection:}
+                    \begin{itemize}\scriptsize
+                        \setlength\itemsep{0.02em}
+                        \item Inferred auto-declaration for missing receptacles.
+                        \item Re-prompts LLaMA~3 with exact error traces (max 5 retries).
+                    \end{itemize}
+                \end{itemize}
+            \end{block}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+\begin{frame}[t]
+    \frametitle{PDDL Problem Generation experiments}
+    \footnotesize
+    Empirical validation across \textbf{28 simulation trials} demonstrates that closed-loop PDDL synthesis achieves $100\%$ feasibility and reliably shields the executive layer.
+
+    \vspace{0.08cm}
+    \begin{columns}[T]
+        \begin{column}{0.50\textwidth}
+            \begin{block}{Empirical Benchmark}
                 \centering
                 \vspace{0.05cm}
                 \resizebox{\linewidth}{!}{%
@@ -408,26 +588,43 @@ Decouples domain physics from task specification using \textbf{PDDL} (Planning D
                     \hline
                     \textbf{Evaluation Metric} & \textbf{Result} \\
                     \hline
-                    Logged Benchmark Trials & 28 \\
+                    Total Logged Trials & 28 \\
                     1st-Pass Solver Feasibility & 26 / 28 (92.9\%) \\
-                    Success after Feedback Loop & \textbf{28 / 28 (100\%)} \\
-                    Fast Downward Parser Errors & \textbf{0\%} \\
+                    Success after Feedback Loop & \textbf{28 / 28 (100.0\%)} \\
+                    Fast Downward Parser Errors & \textbf{0\% (0 / 28)} \\
                     Avg. Symbolic Solve Time & $\mathbf{0.084\,\text{s}}$ \\
                     Max Sequential Objects & 4 (8 plan steps) \\
                     \hline
                 \end{tabular}%
                 }
-                \vspace{0.05cm}
-            \end{block}
-
-            \begin{block}{Key Takeaway for TAMP}
+                \vspace{0.06cm}
                 \begin{itemize}\scriptsize
-                    \item \textbf{Formal Gatekeeper:} Fast Downward catches unreachable goals \textit{before} physical execution.
-                    \item \textbf{Execution Reliability:} Completely shields the Behavior Tree from malformed robotic primitives.
+                    \item \textbf{92.9\% First-Pass Feasibility:} Raw LLaMA~3 output.
+                    \item \textbf{100\% Closed-Loop Success:} Feedback loop repairs all edge cases within $1$--$2$ reflection retries.
+                \end{itemize}
+            \end{block}
+        \end{column}
+
+        \begin{column}{0.48\textwidth}
+            \begin{block}{Impact on the Executive Layer}
+                \begin{itemize}\scriptsize
+                    \setlength\itemsep{0.22em}
+                    \item \textbf{Causal Feasibility Verification:}
+                    \newline Fast Downward verifies task feasibility \textit{prior} to actuation; unreachable goals fail safely offline.
+                    \item \textbf{Plan-to-BT Compiler:}
+                    \newline \texttt{build\_bt\_from\_pddl\_plan(plan, adapter)} compiles verified plans $\pi = \langle a_1, \dots, a_N \rangle$ into reactive Behavior Trees.
+                    \item \textbf{Executive Shielding:}
+                    \newline The Behavior Tree is completely shielded from malformed symbols, broken preconditions, or hallucinated actions.
                 \end{itemize}
             \end{block}
         \end{column}
     \end{columns}
+
+    \vspace{0.06cm}
+    \setbeamercolor{verdictbox}{bg=darkblue,fg=white}
+    \begin{beamercolorbox}[sep=3pt,center,shadow=true,rounded=true]{verdictbox}
+        \tiny \textbf{Bridge to Execution:} Verified symbolic deliberation guarantees an error-free plan handoff to reactive Behavior Tree execution.
+    \end{beamercolorbox}
 \end{frame}
 
 \section{Executive Layer}
@@ -613,7 +810,7 @@ Decouples domain physics from task specification using \textbf{PDDL} (Planning D
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{BT Builder: Goal Checking and Reactive Tree Generation}
+\frametitle{BT Builder: Goal Checking and Tree Generation}
 \begin{columns}[T]
     \begin{column}{0.53\textwidth}
         \small \textbf{3. Goal-Guarded Wrapper (\texttt{wrap\_with\_goal\_check})}
@@ -672,90 +869,101 @@ Decouples domain physics from task specification using \textbf{PDDL} (Planning D
 
 
 
-\begin{frame}
+\begin{frame}[t]
 \frametitle{BT Nodes: Skills \& Conditions}
+\footnotesize
+The executive layer instantiates action skills and condition monitors as modular \texttt{py\_trees} nodes, bridging discrete PDDL plans to continuous 20\,Hz robot control.
+
+\vspace{0.04cm}
 \begin{columns}[T]
-    \begin{column}{0.5\textwidth}
-        \setbeamercolor{verdictbox}{bg=darkblue,fg=white}
-        \begin{beamercolorbox}[sep=4pt,shadow=true,rounded=true]{verdictbox}
-            \centering \small \textbf{Action Skills (\texttt{skills.py})}
-        \end{beamercolorbox}
-        \vspace{0.15cm}
-        \scriptsize
-        Subclasses of \texttt{py\_trees.behaviour.Behaviour}:
-        \begin{itemize}
-            \item \textbf{Non-Blocking Stepping}: Returns \texttt{RUNNING} while the robot moves, and \texttt{SUCCESS} or \texttt{FAILURE} upon completion.
-            \item \textbf{TaskSpaceRRT Integration}: Computes collision-free SE(3) end-effector trajectories dynamically for the 7-DOF Panda arm.
-            \item \textbf{Operational Primitives}:
-            \begin{itemize}
-                \tiny
-                \item \texttt{MotionPlanningPickUp}: Approach $\to$ Grasp $\to$ Lift.
-                \item \texttt{MotionPlanningPlaceInBin}: Transit $\to$ Lower $\to$ Release $\to$ Retreat.
+    \begin{column}{0.50\textwidth}
+        \begin{block}{Action Skills (\texttt{skills.py})}
+            \begin{itemize}\scriptsize
+                \setlength\itemsep{0.12em}
+                \item \textbf{Base Architecture (\texttt{Skill}):}
+                \newline Subclasses \texttt{Behaviour}. Non-blocking 20\,Hz tick: returns \texttt{RUNNING}, \texttt{SUCCESS} on \texttt{is\_done()}, or \texttt{FAILURE} on timeout. Emits 7-DOF OSC commands $a \in \mathbb{R}^7$.
+                \item \textbf{Pick-Up Primitive (\texttt{MotionPlanningPickUp}):}
+                \newline 4-stage FSM: \texttt{follow\_path} (RRT to hover) $\to$ \texttt{descend} (linear approach) $\to$ \texttt{grasp} (finger closure) $\to$ \texttt{lift} (clearance).
+                \newline $\blacktriangleright$ \textit{Hybrid PPO Variant:} Replaces descent/grasp with learned RL policy.
+                \item \textbf{Place Primitive (\texttt{MotionPlanningPlaceInBin}):}
+                \newline 2-stage FSM: \texttt{follow\_path} (RRT transit with locked grip) $\to$ \texttt{release} (open gripper over container).
             \end{itemize}
-        \end{itemize}
+        \end{block}
     \end{column}
 
-    \begin{column}{0.5\textwidth}
-        \setbeamercolor{verdictbox}{bg=darkblue,fg=white}
-        \begin{beamercolorbox}[sep=4pt,shadow=true,rounded=true]{verdictbox}
-            \centering \small \textbf{Condition Nodes (\texttt{conditions.py})}
-        \end{beamercolorbox}
-        \vspace{0.15cm}
-        \scriptsize
-        Dual verification paradigm:
-        \begin{itemize}
-            \item \textbf{PDDLGoalCheck (Symbolic Grounding)}:
-            \begin{itemize}
-                \tiny
-                \item Parses goal formulas from \texttt{problem.pddl}.
-                \item Evaluates simulator predicates deterministically (\texttt{is\_in\_bin}, \texttt{is\_grasped}).
-                \item Fast, deterministic, and zero-latency.
+    \begin{column}{0.48\textwidth}
+        \begin{block}{Condition Nodes (\texttt{conditions.py})}
+            \begin{itemize}\scriptsize
+                \setlength\itemsep{0.12em}
+                \item \textbf{Physical Grounding (\texttt{conditions.py}):}
+                \newline Evaluates simulator state at zero latency:
+                \newline $\bullet$ \texttt{on(?x, ?y)} $\leftrightarrow$ \texttt{env.is\_in\_bin(obj, target)}
+                \newline $\bullet$ \texttt{holding(?x)} $\leftrightarrow$ \texttt{env.is\_grasped(obj)}
+                \newline $\bullet$ \texttt{on-table(?x)} $\leftrightarrow$ $\neg\text{grasped} \land \neg\text{in\_bin}$
+                \item \textbf{PDDL Goal Monitor (\texttt{PDDLGoalCheck}):}
+                \newline Parses conjunctive goals $\bigwedge g_i$ from \texttt{problem.pddl}. Evaluates pre/post conditions to skip met goals or trigger retry.
             \end{itemize}
-            \item \textbf{VisualCheck (VLM Inspection)}:
-            \begin{itemize}
-                \tiny
-                \item Adopts Wake et al. self-prompting.
-                \item Queries VLM (\texttt{vlm\_query\_fn}) on camera frames for open-world semantic validation.
-            \end{itemize}
-        \end{itemize}
+        \end{block}
     \end{column}
 \end{columns}
 \end{frame}
 
-\begin{frame}[fragile]
-\frametitle{Reactive Execution \& Runtime Tree}
+\begin{frame}[fragile,t]
+\frametitle{Execution \& Runtime Tree}
+\footnotesize
+The runtime engine executes the compiled Behavior Tree via a 20\,Hz tick loop, continuously monitoring preconditions, dispatching skills, and recovering from physical disturbances.
+
+\vspace{0.01cm}
 \begin{columns}[T]
-    \begin{column}{0.52\textwidth}
-        \small \textbf{Runtime Execution Flow}
-        \scriptsize
-        \begin{enumerate}
-            \item \textbf{Initial Check}: \texttt{GoalCheck\_Pre} runs. If goal holds, the tree returns \texttt{SUCCESS} immediately (no redundant actions).
-            \item \textbf{Execution}: On failure, the Fallback ticks \texttt{retry\_until\_goal} $\to$ \texttt{pddl\_plan\_sequence}.
-            \item \textbf{Closed-Loop Motion}: Each skill executes collision-free RRT trajectories at 20 Hz.
-            \item \textbf{Verification \& Recovery}: \texttt{GoalCheck\_Post} validates final state. If an object is dropped, the Retry decorator triggers re-execution.
-        \end{enumerate}
+    \begin{column}{0.50\textwidth}
+        \begin{block}{Runtime Execution Pipeline}
+            \begin{itemize}\scriptsize
+                \setlength\itemsep{0.05em}
+                \item \textbf{20\,Hz Tick Loop (\texttt{BehaviourTree.tick()}):}
+                \newline Synchronously evaluates the tree to active leaf; steps simulation with 7-DOF OSC action $a \in \mathbb{R}^7$.
+                \item \textbf{4-Phase Reactive Flow:}
+                \newline $\bullet$ \textit{1. Pre-Check:} \texttt{GoalCheck\_Pre} skips met goals ($0$ redundant steps).
+                \newline $\bullet$ \textit{2. Dispatch:} \texttt{Sequence} executes skills in deterministic plan order.
+                \newline $\bullet$ \textit{3. Motion:} Active skill steps RRT waypoints at 20\,Hz.
+                \newline $\bullet$ \textit{4. Recovery:} \texttt{GoalCheck\_Post} triggers \texttt{Retry} on slip or drop.
+                \item \textbf{Live State Introspection:}
+                \newline Live HUD tracks active node, motion stage, and tick counter in real time.
+            \end{itemize}
+        \end{block}
     \end{column}
 
     \begin{column}{0.48\textwidth}
-        \setbeamercolor{treebox}{bg=gray!10,fg=black}
-        \begin{beamercolorbox}[sep=4pt,rounded=true,shadow=true]{treebox}
-            \scriptsize \textbf{Generated Behavior Tree Structure}
-            \tiny
-            \begin{verbatim}
+        \begin{block}{Generated Behavior Tree Structure}
+            \setbeamercolor{treebox}{bg=gray!10,fg=black}
+            \begin{beamercolorbox}[sep=2.5pt,rounded=true]{treebox}
+                \fontsize{5.8pt}{6.8pt}\selectfont
+\begin{verbatim}
 [?] goal_guarded_root (Selector)
- |-- [>] GoalCheck_Pre
+ |-- [>] GoalCheck_Pre (already met?)
  `-- [R] retry_until_goal (max=3)
       `-- [->] attempt (Sequence)
            |-- [->] pddl_plan_sequence
            |    |-- PickUp(yellow_cube)
-           |    |-- PlaceInBin(yellow_cube->pot)
-           |    |-- PickUp(red_can)
-           |    `-- PlaceInBin(red_can->bin)
-           `-- [>] GoalCheck_Post
-            \end{verbatim}
-        \end{beamercolorbox}
+           |    `-- PlaceInBin(cube->pot)
+           `-- [>] GoalCheck_Post (verified?)
+\end{verbatim}
+            \end{beamercolorbox}
+            \vspace{0.01cm}
+            \begin{itemize}\scriptsize
+                \setlength\itemsep{0.02em}
+                \item \textbf{Selector [?]:} Dynamic fallback preemption.
+                \item \textbf{Sequence [\texttt{->}]:} Preserves PDDL action order.
+                \item \textbf{Retry [R]:} Autonomous loop on slip or drop.
+            \end{itemize}
+        \end{block}
     \end{column}
 \end{columns}
+
+\vspace{0.01cm}
+\setbeamercolor{verdictbox}{bg=darkblue,fg=white}
+\begin{beamercolorbox}[sep=2pt,center,shadow=true,rounded=true]{verdictbox}
+    \tiny \textbf{Reactive Robustness:} Closed-loop Behavior Trees autonomously intercept execution disturbances and trigger plan recovery.
+\end{beamercolorbox}
 \end{frame}
 
 
@@ -768,7 +976,7 @@ Decouples domain physics from task specification using \textbf{PDDL} (Planning D
         \small \textbf{Reactive Layer Roles}
         \scriptsize
         \begin{itemize}
-            \item \textbf{Symbolic-to-Continuous Grounding}: Translates discrete BT skills (\texttt{PickUp}, \texttt{PlaceInBin}) into continuous robot motion.
+            \item \textbf{Symbolic-to-Continuous Grounding}: Translates discrete BT skills (\texttt{pick}, \texttt{place}) into continuous robot motion.
             \item \textbf{Perception}: Accounts for physical geometry, obstacles, and contact dynamics ignored by PDDL.
             \item \textbf{Motor Control}: Operates at 20\,Hz with real-time state feedback from MuJoCo Simulator Environment.
         \end{itemize}
@@ -981,16 +1189,16 @@ Decouples domain physics from task specification using \textbf{PDDL} (Planning D
         \begin{column}{0.48\textwidth}
             \begin{block}{Training Progression (25k Steps)}
                 \begin{itemize}\scriptsize
-                    \item \textbf{Exploration Phase:} High variance in initial rollouts as the policy explores grasp stability.
-                    \item \textbf{High-Return Peaks ($>150$):} Successful grasp + vertical lift + sparse completion bonus ($+15$).
+                    \item \textbf{Stochastic Action Noise:} Persistent exploration noise ($\sigma \approx 1.0$) perturbs micro-contacts during training ($\sim 50$ avg), though clean rollouts reach $>200$.
+                    \item \textbf{Peak Rollouts ($>200$):} Unperturbed trajectories achieve full force closure and lift with terminal bonus ($+15$).
                 \end{itemize}
             \end{block}
         \end{column}
         \begin{column}{0.48\textwidth}
-            \begin{block}{Deterministic Evaluation}
+            \begin{block}{Deterministic Task Completion}
                 \begin{itemize}\scriptsize
-                    \item Evaluated every $5{,}000$ steps over 10 test rollouts.
-                    \item Greedy policy achieves consistent ascent, climbing from initial hover ($\sim 36$) to peak performance ($\sim 73$).
+                    \item \textbf{Deterministic Evaluation:} Setting $\sigma = 0$ removes action jitter, revealing the true learned policy return of $\mathbf{199.4}$.
+                    \item \textbf{Success Rate Ascent:} Climbs rapidly from $\mathbf{0\%} \to \mathbf{45\%} \to \mathbf{95\%}$ robust task completion.
                 \end{itemize}
             \end{block}
         \end{column}
@@ -1003,7 +1211,7 @@ Decouples domain physics from task specification using \textbf{PDDL} (Planning D
             \includegraphics[width=\textwidth]{pictures/ppo_bc_ablation.pdf}
         \end{column}
         \begin{column}{0.45\textwidth}
-            \begin{block}{Algorithmic Oracle Demonstrations}
+            \begin{block}{Algorithmic Demonstrations}
                 \begin{itemize}\scriptsize
                     \item Generated via a closed-loop 3-stage state-machine using simulation ground-truth poses.
                     \item $100$ demos ($\sim 3{,}000$ transitions) pre-trained for 150 epochs via supervised MSE loss.
@@ -1029,8 +1237,8 @@ Decouples domain physics from task specification using \textbf{PDDL} (Planning D
         \begin{column}{0.48\textwidth}
             \begin{block}{Cube Manipulation Performance}
                 \begin{itemize}\scriptsize
-                    \item \textbf{High Reliability:} PPO achieves \textbf{82.5\%} success rate (vs. 100\% analytical oracle) using local relative observations.
-                    \item \textbf{Micro-Trajectory Parity:} Identical physical motion speed: $\mathbf{1.71\,\text{s}}$ (34.1 steps) vs $\mathbf{1.70\,\text{s}}$ (34.0 steps).
+                    \item \textbf{Dual-Cube Evaluation:} PPO achieves $\mathbf{95\%}$ on \textbf{Yellow Cube} (consistent with training) and $\mathbf{90\%}$ on \textbf{Purple Cube} (zero-shot transfer), averaging $\mathbf{92.5\%}$.
+                    \item \textbf{Micro-Trajectory Parity:} Rapid execution latency: $\mathbf{1.68\,\text{s}}$ ($33.5$ steps) vs $\mathbf{1.72\,\text{s}}$ ($34.3$ steps).
                     \item \textbf{Eliminates Dwell Timers:} The heuristic forces a conservative $\mathbf{2.0\,\text{s}}$ ($40$ ticks) pause before lifting; PPO lifts instantly upon contact.
                 \end{itemize}
             \end{block}
@@ -1052,8 +1260,11 @@ Decouples domain physics from task specification using \textbf{PDDL} (Planning D
 \section{Setup and Experimental Results}
 \begin{frame}{Experimental Setup: Simulation Environment}
     \begin{columns}[c]
-        \begin{column}{0.54\textwidth}
+        \begin{column}{0.52\textwidth}
+            \centering
             \includegraphics[width=\textwidth]{pictures/simulation_env_dual_cam.png}
+            \vspace{0.15cm}
+            \includegraphics[width=\textwidth]{pictures/trial_execution_35.png}
         \end{column}
         \begin{column}{0.45\textwidth}
             \begin{block}{Robosuite TaskSorting Arena}

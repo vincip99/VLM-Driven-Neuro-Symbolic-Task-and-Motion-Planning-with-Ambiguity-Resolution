@@ -60,3 +60,22 @@ class CustomArena(TableArena):
             quat="0.560842 0.430459 0.430459 0.560842" 
         )
         self.worldbody.append(frontal_cam)
+
+        # Isometric 3D Overview Cameras (angled down at arena center)
+        iso_cam_left = ET.Element(
+            "camera",
+            name="arena_isometric_left",
+            pos="1.15 -0.85 1.45",
+            mode="fixed",
+            quat="0.743514 0.494350 0.249339 0.375012"
+        )
+        self.worldbody.append(iso_cam_left)
+
+        iso_cam_right = ET.Element(
+            "camera",
+            name="arena_isometric_right",
+            pos="1.2 0.75 1.45",
+            mode="fixed",
+            quat="0.404188 0.267643 0.482895 0.729255"
+        )
+        self.worldbody.append(iso_cam_right)

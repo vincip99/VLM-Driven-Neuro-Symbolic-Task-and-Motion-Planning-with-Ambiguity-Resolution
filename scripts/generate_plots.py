@@ -61,15 +61,15 @@ def plot_main_training_curves():
     df["timesteps"] = df["l"].cumsum()
     evals = np.load(eval_npz)
 
-    # 1. Combined 2-Panel Figure
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.4), dpi=300)
+    # 1. Combined 3-Panel Figure (Training, Eval Return, and Task Completion Rate)
+    fig, axes = plt.subplots(1, 3, figsize=(13.2, 3.8), dpi=300)
 
     # Panel 1: Training Episode Returns
     ax1 = axes[0]
     ax1.scatter(
         df["timesteps"], df["r"],
-        color=COLOR_DARKBLUE, alpha=0.22, s=14, edgecolors="none",
-        label="Raw Episode Return"
+        color=COLOR_DARKBLUE, alpha=0.20, s=12, edgecolors="none",
+        label="Raw Episode"
     )
     rolling_w = 20
     roll_mean = df["r"].rolling(window=rolling_w, min_periods=5).mean()
@@ -77,41 +77,42 @@ def plot_main_training_curves():
 
     ax1.plot(
         df["timesteps"], roll_mean,
-        color=COLOR_RED, linewidth=2.4,
+        color=COLOR_RED, linewidth=2.2,
         label=f"Rolling Mean (w={rolling_w})"
     )
     ax1.fill_between(
         df["timesteps"],
         roll_mean - roll_std,
         roll_mean + roll_std,
-        color=COLOR_RED, alpha=0.18,
+        color=COLOR_RED, alpha=0.15,
         label="±1 Std Dev"
     )
     ax1.axhline(0, color="gray", linestyle=":", alpha=0.5, linewidth=0.8)
     ax1.set_xlabel("Environment Timesteps")
     ax1.set_ylabel("Episode Return")
-    ax1.set_title("PPO Training Return Evolution")
+    ax1.set_title("PPO Training Return", fontweight="bold")
     ax1.set_xlim(0, 26000)
     ax1.grid(True)
-    ax1.legend(loc="upper left", frameon=True, framealpha=0.9, fontsize=9.5)
+    ax1.legend(loc="upper left", frameon=True, framealpha=0.9, fontsize=8.5)
 
     # Panel 2: Deterministic Periodic Evaluation
     ax2 = axes[1]
     eval_timesteps = evals["timesteps"]
     eval_returns = evals["results"]
+    eval_lengths = evals["ep_lengths"]
     eval_mean = eval_returns.mean(axis=1)
     eval_std = eval_returns.std(axis=1)
 
     for step, rets in zip(eval_timesteps, eval_returns):
         ax2.scatter(
             [step] * len(rets), rets,
-            color=COLOR_ACCENT, alpha=0.45, s=24, edgecolors="none"
+            color=COLOR_ACCENT, alpha=0.45, s=20, edgecolors="none"
         )
 
     ax2.plot(
         eval_timesteps, eval_mean,
-        color=COLOR_DARKBLUE, marker="o", markersize=7, linewidth=2.4,
-        label="Mean Eval Return (10 episodes)"
+        color=COLOR_DARKBLUE, marker="o", markersize=6, linewidth=2.2,
+        label="Mean Return (20 eps)"
     )
     ax2.fill_between(
         eval_timesteps,
@@ -122,12 +123,28 @@ def plot_main_training_curves():
     )
     ax2.set_xlabel("Environment Timesteps")
     ax2.set_ylabel("Evaluation Return")
-    ax2.set_title("Periodic Policy Evaluation (Greedy)")
+    ax2.set_title("Periodic Evaluation Return", fontweight="bold")
     ax2.set_xlim(3000, 27000)
     ax2.set_xticks(eval_timesteps)
     ax2.set_xticklabels([f"{int(s/1000)}k" for s in eval_timesteps])
     ax2.grid(True)
-    ax2.legend(loc="upper left", frameon=True, framealpha=0.9, fontsize=9.5)
+    ax2.legend(loc="upper left", frameon=True, framealpha=0.9, fontsize=8.5)
+
+    # Panel 3: Task Completion Rate Evolution (No target line)
+    ax3 = axes[2]
+    success_rates = np.array([np.mean(r > 75) * 100 for r in eval_returns])
+    bars = ax3.bar([s/1000 for s in eval_timesteps], success_rates, width=2.4, color=COLOR_RED, alpha=0.85, edgecolor=COLOR_DARKBLUE, linewidth=1.2)
+    ax3.plot([s/1000 for s in eval_timesteps], success_rates, color=COLOR_DARKBLUE, marker="s", markersize=6, linewidth=2.0)
+    for s, rate in zip(eval_timesteps, success_rates):
+        ax3.text(s/1000, rate + 2.5, f"{rate:.0f}%", ha="center", va="bottom", fontweight="bold", fontsize=9.0)
+
+    ax3.set_xlabel("Environment Timesteps")
+    ax3.set_ylabel("Task Success Rate (%)")
+    ax3.set_title("Task Completion Rate", fontweight="bold")
+    ax3.set_xticks([s/1000 for s in eval_timesteps])
+    ax3.set_xticklabels([f"{int(s/1000)}k" for s in eval_timesteps])
+    ax3.set_ylim(0, 115)
+    ax3.grid(True)
 
     plt.tight_layout()
     save_figure(fig, "ppo_training_results")

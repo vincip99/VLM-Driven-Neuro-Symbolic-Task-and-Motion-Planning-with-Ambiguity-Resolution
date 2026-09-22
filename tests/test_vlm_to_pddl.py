@@ -1,8 +1,15 @@
 import os
+import sys
 from datetime import datetime
 import cv2
 import numpy as np
 import robosuite as suite
+
+# Ensure workspace root is in sys.path
+curr_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.abspath(os.path.join(curr_dir, ".."))
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
 
 # Adjust this import path based on where your classes are saved
 from src.ambiguityres.vlm_model import (
@@ -103,8 +110,6 @@ def main():
     print("\nLoading pre-defined domain and Generating Problem PDDL JSON...")
     
     # Read the predefined domain
-    curr_dir = os.path.dirname(os.path.abspath(__file__))
-    repo_root = os.path.abspath(os.path.join(curr_dir, ".."))
     domain_path = os.path.join(repo_root, "domains", "manipulation", "domain.pddl")
     with open(domain_path, "r") as f:
         domain_pddl = f.read()
