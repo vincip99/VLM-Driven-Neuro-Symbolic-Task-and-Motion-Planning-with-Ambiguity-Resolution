@@ -1,6 +1,2 @@
 trial_id,name,category,prompt,num_objects,task_objects,target_locations,is_ambiguous,vlm_grounding_time,llm_first_pass_time,first_pass_valid,first_pass_feasible,first_pass_error,retries_used,feedback_success,fd_parser_error,fd_success,fd_solve_time,plan_length
-1,single_can_sorting_bin,Tier 1: Single-Object,Put the red can in the sorting bin.,1,['red_can'],['sorting_bin'],False,0.402,0.812,True,True,None,0,True,False,True,0.1485,2
-2,single_cube_pot,Tier 1: Single-Object,Please take the yellow cube and place it into the pot.,1,['yellow_cube'],['pot'],False,0.545,0.765,True,True,None,0,True,False,True,0.0821,2
-3,single_can_table_relocate,Tier 1: Single-Object,Move the blue can onto the table.,1,['blue_can'],['table'],False,0.403,0.558,True,True,None,0,True,False,True,0.0831,2
-4,store_inside_phrasing_can,Tier 1: Single-Object,Grab the green can and store it inside the sorting bin.,1,['green_can'],['sorting_bin'],False,0.464,0.68,False,False,Predicate Hallucination,1,True,False,True,0.079,2
-5,deposit_block_pot,Tier 1: Single-Object,Deposit the purple cube into the pot receptacle.,1,['purple_cube'],['pot'],False,0.553,0.5,True,True,None,0,True,False,True,0.0785,2
+1,single_can_sorting_bin,Tier 1: Single-Object,Put the red can in the sorting bin.,1,['red_can'],['sorting_bin'],True,14.475,11.854,True,True,None,0,True,False,True,0.1091,2
