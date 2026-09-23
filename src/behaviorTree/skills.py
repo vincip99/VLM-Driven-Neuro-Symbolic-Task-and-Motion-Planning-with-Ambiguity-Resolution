@@ -211,7 +211,7 @@ class MotionPlanningPickUpSkill(Skill):
             self.grasp_timer += 1
             target_pos = obj_pos.copy()
             target_pos[2] += self.descend_height
-            if self.grasp_timer > 40:
+            if self.grasp_timer > 20:
                 self.stage = "lift"
                 self._lift_timer = 0
                 self._initial_obj_z = obj_pos[2]
@@ -310,11 +310,30 @@ class HybridPPOPickUpSkill(MotionPlanningPickUpSkill):
     def initialise(self):
         super().initialise()
         self._ppo_steps = 0
+        self._ppo_lifting = False
+        self._ppo_closing_timer = 0
         # Check if env has a global use_ppo flag or model path override
         if self.env is not None and hasattr(self.env, "use_ppo"):
             self.use_ppo = bool(self.env.use_ppo)
         if self.env is not None and hasattr(self.env, "ppo_model_path") and self.env.ppo_model_path:
             self.model_path = str(self.env.ppo_model_path)
+
+    def _check_contact_grasp(self, target_obj: str) -> bool:
+        """Return True if gripper fingers are physically in contact with the object."""
+        if self.env is None or not hasattr(self.env, "_base_env"):
+            return False
+        base = self.env._base_env
+        gripper = base.robots[0].gripper["right"]
+        target_geom = getattr(base, target_obj, None)
+        if target_geom is None:
+            return False
+        if base._check_grasp(gripper=gripper, object_geoms=target_geom):
+            return True
+        left_pad = gripper.important_geoms.get("left_fingerpad", [])
+        right_pad = gripper.important_geoms.get("right_fingerpad", [])
+        c_left = base.check_contact(left_pad, target_geom.contact_geoms)
+        c_right = base.check_contact(right_pad, target_geom.contact_geoms)
+        return bool(c_left and c_right)
 
     def is_done(self, obs: dict) -> bool:
         target_obj = self.args.get("object", self.args.get("ob", ""))
@@ -323,10 +342,12 @@ class HybridPPOPickUpSkill(MotionPlanningPickUpSkill):
         if body_id is not None:
             obj_z = self.env._base_env.sim.data.body_xpos[body_id][2]
             init_z = getattr(self, "_initial_obj_z", self.env._table_height)
-            # Successfully lifted if higher than initial position
-            if obj_z > init_z + 0.035 and self.env.is_grasped(target_obj):
+            is_grasped = self._check_contact_grasp(target_obj) or self.env.is_grasped(target_obj)
+            # Successfully lifted if higher than initial position and grasped
+            if obj_z > init_z + 0.025 and is_grasped:
                 return True
-            if obj_z > init_z + 0.06:
+            # Unconditional success if lifted significantly
+            if obj_z > init_z + 0.045:
                 return True
 
         if self.stage in ["lift", "descend", "grasp"]:
@@ -347,21 +368,31 @@ class HybridPPOPickUpSkill(MotionPlanningPickUpSkill):
         # ── Stage 1: Traverse RRT Waypoints to Pre-Grasp Hover Pose ─
         if self.stage == "follow_path":
             self._wp_timer += 1
-            if self.current_wp_idx < len(self.path):
+            if self.current_wp_idx < len(self.path) - 1:
                 target_pos = self.path[self.current_wp_idx]
                 if np.linalg.norm(eef_pos - target_pos) < 0.04 or self._wp_timer > 30:
                     self.current_wp_idx += 1
                     self._wp_timer = 0
+            elif self.current_wp_idx == len(self.path) - 1:
+                target_pos = self.path[-1]
+                xy_err = np.linalg.norm(eef_pos[:2] - target_pos[:2])
+                if xy_err < 0.015 or self._wp_timer > 35:
+                    self.current_wp_idx += 1
+                    self._wp_timer = 0
             else:
-                # Reached pre-grasp hover pose: check if PPO should take over
-                ppo_model = self.get_model(self.model_path) if self.use_ppo else None
+                # Reached pre-grasp hover pose: use PPO for cubes
+                is_cube = "cube" in target_obj
+                ppo_model = self.get_model(self.model_path) if (self.use_ppo and is_cube) else None
                 if ppo_model is not None:
                     self.stage = "ppo_lift"
                     self._ppo_steps = 0
+                    self._ppo_lifting = False
+                    self._ppo_closing_timer = 0
+                    self._initial_obj_z = obj_pos[2]
                     self.logger.info(f"[{self.name}] Pre-grasp hover reached. Handing over to PPO micro-policy.")
                 else:
                     self.stage = "descend"
-                    self.logger.info(f"[{self.name}] PPO unavailable or disabled. Using heuristic descend-grasp-lift.")
+                    self.logger.info(f"[{self.name}] PPO unavailable, disabled, or target is cylinder. Using heuristic descend-grasp-lift.")
                 target_pos = eef_pos
 
             delta = target_pos - eef_pos
@@ -382,14 +413,18 @@ class HybridPPOPickUpSkill(MotionPlanningPickUpSkill):
                 self._descend_timer = 0
                 return super()._get_action(obs)
 
-            # Check if grasp achieved and lifted
-            obj_z = self.env._base_env.sim.data.body_xpos[body_id][2]
             init_z = getattr(self, "_initial_obj_z", self.env._table_height)
-            if obj_z > init_z + 0.035 and self.env.is_grasped(target_obj):
-                # Object successfully grasped and lifted! Hold steady
+            table_z = getattr(self.env, "_table_height", 0.8)
+
+            # Once lift phase is triggered, smoothly lift to hover height
+            if getattr(self, "_ppo_lifting", False):
                 action = np.zeros(7)
-                action[2] = 0.2  # gentle upward hold
-                action[6] = 1.0  # hold closed
+                target_lift_z = init_z + self.hover_height
+                z_delta = target_lift_z - eef_pos[2]
+                action[2] = np.clip(self.kp * z_delta, 0.15, 0.60)
+                xy_delta = obj_pos[:2] - eef_pos[:2]
+                action[:2] = np.clip(self.kp * xy_delta, -0.20, 0.20)
+                action[6] = 1.0  # Keep gripper firmly closed
                 return action
 
             # Extract 11D observation vector
@@ -399,11 +434,8 @@ class HybridPPOPickUpSkill(MotionPlanningPickUpSkill):
             gripper_joint_ids = [sim.model.joint_name2id(j) for j in gripper.joints]
             gripper_qpos = np.array([sim.data.qpos[j] for j in gripper_joint_ids], dtype=np.float32)
             gripper_qvel = np.array([sim.data.qvel[j] for j in gripper_joint_ids], dtype=np.float32)
-            table_z = getattr(self.env, "_table_height", 0.8)
-            target_geom = getattr(self.env._base_env, target_obj, None)
-            is_contact_grasped = bool(self.env._base_env._check_grasp(gripper=gripper, object_geoms=target_geom)) if target_geom else False
-            is_grasped = is_contact_grasped or bool(self.env.is_grasped(target_obj))
-            is_cylinder = "can" in target_obj
+            is_contact = self._check_contact_grasp(target_obj)
+            is_grasped = is_contact or bool(self.env.is_grasped(target_obj))
 
             ppo_obs = extract_ppo_obs(
                 sim_data=sim.data,
@@ -414,7 +446,7 @@ class HybridPPOPickUpSkill(MotionPlanningPickUpSkill):
                 table_z=table_z,
                 initial_obj_z=self._initial_obj_z,
                 is_grasped=is_grasped,
-                is_cylinder=is_cylinder,
+                is_cylinder=False,
             )
 
             model = self.get_model(self.model_path)
@@ -427,6 +459,29 @@ class HybridPPOPickUpSkill(MotionPlanningPickUpSkill):
             action[:3] = np.clip(action_4d[:3], -1.0, 1.0)
             action[3:6] = 0.0
             action[6] = 1.0 if action_4d[3] > 0.0 else -1.0
+
+            # Prevent EEF from driving into table and jamming gripper fingers
+            safe_min_z = table_z + 0.016
+            if eef_pos[2] <= safe_min_z and action[2] < 0:
+                action[2] = 0.0
+
+            # Grasp closure phase: when PPO closes gripper or EEF reaches grasp height
+            eef_obj_z_diff = eef_pos[2] - obj_pos[2]
+            is_at_grasp_height = eef_obj_z_diff < 0.018
+            if action[6] > 0.0 or is_at_grasp_height:
+                action[6] = 1.0  # Firm binary closure
+                self._ppo_closing_timer += 1
+                xy_delta = obj_pos[:2] - eef_pos[:2]
+                action[:2] = np.clip(5.0 * xy_delta, -0.15, 0.15)
+                target_z = obj_pos[2] + 0.003
+                action[2] = np.clip(5.0 * (target_z - eef_pos[2]), -0.10, 0.10)
+
+                # Trigger lift once grasped or after fingers close
+                if is_contact or self._ppo_closing_timer > 15:
+                    self._ppo_lifting = True
+                    action[2] = 0.5
+                    action[6] = 1.0
+
             return action
 
         # ── Fallback Stages: descend, grasp, lift via superclass controller ─

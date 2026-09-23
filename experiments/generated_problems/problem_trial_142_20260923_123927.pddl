@@ -4,9 +4,8 @@
     red_can - obj
     yellow_cube - obj
     blue_can - obj
-    pot - location
     sorting_bin - location
-    table - location
+    pot - location
   )
   (:init
     (on-table red_can)

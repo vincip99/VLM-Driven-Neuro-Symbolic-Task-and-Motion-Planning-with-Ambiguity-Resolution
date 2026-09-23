@@ -42,6 +42,7 @@
 % Add this to your preamble
 \setbeamercolor{section in toc}{fg=darkblue}
 \setbeamertemplate{section in toc}[sections numbered]
+\setbeamercolor{button}{bg=darkblue,fg=white}
 
 \begin{document}
 
@@ -575,7 +576,7 @@ While domain physics $\mathcal{D}$ are fixed offline, the planning problem $\mat
 \begin{frame}[t]
     \frametitle{PDDL Problem Generation experiments}
     \footnotesize
-    Empirical validation across \textbf{28 simulation trials} demonstrates that closed-loop PDDL synthesis achieves $100\%$ feasibility and reliably shields the executive layer.
+    Empirical validation across \textbf{28 simulation trials} demonstrates that closed-loop PDDL synthesis achieves $96.4\%$ feasibility and reliably shields the executive layer.
 
     \vspace{0.08cm}
     \begin{columns}[T]
@@ -589,18 +590,18 @@ While domain physics $\mathcal{D}$ are fixed offline, the planning problem $\mat
                     \textbf{Evaluation Metric} & \textbf{Result} \\
                     \hline
                     Total Logged Trials & 28 \\
-                    1st-Pass Solver Feasibility & 26 / 28 (92.9\%) \\
-                    Success after Feedback Loop & \textbf{28 / 28 (100.0\%)} \\
+                    1st-Pass Solver Feasibility & 19 / 28 (67.9\%) \\
+                    Success after Feedback Loop & \textbf{27 / 28 (96.4\%)} \\
                     Fast Downward Parser Errors & \textbf{0\% (0 / 28)} \\
-                    Avg. Symbolic Solve Time & $\mathbf{0.084\,\text{s}}$ \\
+                    Avg. Symbolic Solve Time & $\mathbf{0.103\,\text{s}}$ \\
                     Max Sequential Objects & 4 (8 plan steps) \\
                     \hline
                 \end{tabular}%
                 }
                 \vspace{0.06cm}
                 \begin{itemize}\scriptsize
-                    \item \textbf{92.9\% First-Pass Feasibility:} Raw LLaMA~3 output.
-                    \item \textbf{100\% Closed-Loop Success:} Feedback loop repairs all edge cases within $1$--$2$ reflection retries.
+                    \item \textbf{67.9\% First-Pass Feasibility:} Raw LLaMA~3 output before verification.
+                    \item \textbf{96.4\% Closed-Loop Success:} Feedback reflection repairs $8/9$ initial errors within $1$--$2$ retries.
                 \end{itemize}
             \end{block}
         \end{column}
@@ -1044,7 +1045,7 @@ The runtime engine executes the compiled Behavior Tree via a 20\,Hz tick loop, c
         \item \textbf{Tracking Error:} 
         At each time step, the position error is defined as:
         \[
-            \mathbf{e} = \mathbf{p}_{\text{target}} - \mathbf{p}_{\text{EF}}
+            \mathbf{e} = \mathbf{p}_{\text{target}} - \mathbf{p}_{\text{EEF}}
         \]
         \item \textbf{Control Law:} 
         The controller outputs velocity commands bounded by a maximum speed:
@@ -1126,7 +1127,7 @@ The runtime engine executes the compiled Behavior Tree via a 20\,Hz tick loop, c
             \end{block}
         \end{column}
         \begin{column}{0.48\textwidth}
-            \begin{block}{Gripper State \& Morphology}
+            \begin{block}{Gripper and Auxiliary States}
                 \begin{itemize}\footnotesize
                     \item $\mathbf{q}_{\text{grip}}, \dot{\mathbf{q}}_{\text{grip}}$: Left/right finger joint positions and velocities (contact stall detection).
                     \item $c_{\text{grasp}} \in \{0, 1\}$: Bilateral force-closure flag (Robosuite contact normal check).
@@ -1137,7 +1138,7 @@ The runtime engine executes the compiled Behavior Tree via a 20\,Hz tick loop, c
     \end{columns}
 \end{frame}
 
-\begin{frame}{Manipulation: Shaped Reward Formulation}
+\begin{frame}{Manipulation: Reward Function}
     \small
     The agent is trained with a multi-stage continuous-discrete reward guiding the transition from approach $\to$ grasp $\to$ lift:
     \begin{equation*}
@@ -1205,19 +1206,19 @@ The runtime engine executes the compiled Behavior Tree via a 20\,Hz tick loop, c
     \end{columns}
 \end{frame}
 
-\begin{frame}{Manipulation: Why Behavioral Cloning Warm-Start?}
+\begin{frame}{Manipulation: Behavioral Cloning Warm-Start}
     \begin{columns}[c]
         \begin{column}{0.54\textwidth}
             \includegraphics[width=\textwidth]{pictures/ppo_bc_ablation.pdf}
         \end{column}
         \begin{column}{0.45\textwidth}
-            \begin{block}{Algorithmic Demonstrations}
+            \begin{block}{Synthetic Demonstrations}
                 \begin{itemize}\scriptsize
                     \item Generated via a closed-loop 3-stage state-machine using simulation ground-truth poses.
                     \item $100$ demos ($\sim 3{,}000$ transitions) pre-trained for 150 epochs via supervised MSE loss.
                 \end{itemize}
             \end{block}
-            \begin{block}{Key Empirical Findings}
+            \begin{block}{Pure RL vs BC-RL}
                 \begin{itemize}\scriptsize
                     \item \textbf{Pure RL (120k steps):} Gets stuck in the \textit{"reaching local minimum"} ($\approx 29$ reward), never discovering the precise descent-grasp-lift sequence.
                     \item \textbf{BC Warm-Start (25k steps):} Initializes policy in the basin of attraction, achieving immediate task competence in $\mathbf{5\times}$ fewer steps.
@@ -1235,19 +1236,19 @@ The runtime engine executes the compiled Behavior Tree via a 20\,Hz tick loop, c
     \vspace{-0.3cm}
     \begin{columns}[T]
         \begin{column}{0.48\textwidth}
-            \begin{block}{Cube Manipulation Performance}
+            \begin{block}{Manipulation Performance}
                 \begin{itemize}\scriptsize
-                    \item \textbf{Dual-Cube Evaluation:} PPO achieves $\mathbf{95\%}$ on \textbf{Yellow Cube} (consistent with training) and $\mathbf{90\%}$ on \textbf{Purple Cube} (zero-shot transfer), averaging $\mathbf{92.5\%}$.
-                    \item \textbf{Micro-Trajectory Parity:} Rapid execution latency: $\mathbf{1.68\,\text{s}}$ ($33.5$ steps) vs $\mathbf{1.72\,\text{s}}$ ($34.3$ steps).
+                    \item \textbf{Generalization:} PPO achieves $\mathbf{95\%}$ on \textbf{Yellow Cube} (consistent with training) and $\mathbf{90\%}$ on \textbf{Purple Cube} (zero-shot transfer), averaging $\mathbf{92.5\%}$.
+                    \item \textbf{Trajectory steps:} Rapid execution latency: $\mathbf{1.68\,\text{s}}$ ($33.5$ steps) vs $\mathbf{1.72\,\text{s}}$ ($34.3$ steps).
                     \item \textbf{Eliminates Dwell Timers:} The heuristic forces a conservative $\mathbf{2.0\,\text{s}}$ ($40$ ticks) pause before lifting; PPO lifts instantly upon contact.
                 \end{itemize}
             \end{block}
         \end{column}
 
         \begin{column}{0.48\textwidth}
-            \begin{block}{Trade-Offs \& Hybrid Synergy}
+            \begin{block}{Trade-Offs}
                 \begin{itemize}\scriptsize
-                    \item \textbf{Dynamic Compliance:} PPO modulates continuous velocities based on real-time force closure rather than rigid fixed gains ($K_p = 10$).
+                    \item \textbf{Dynamic Impedance:} PPO modulates continuous velocities based on real-time force closure rather than rigid fixed gains ($K_p = 10$).
                     \item \textbf{Privileged vs Reactive:} Heuristic requires exact object coordinates; PPO relies only on local $\Delta\mathbf{p}$ and joint kinematics.
                     \item \textbf{Safety Guard:} Hybrid pick node falls back to heuristic if step budget ($\le 90$) expires.
                 \end{itemize}
@@ -1271,10 +1272,6 @@ The runtime engine executes the compiled Behavior Tree via a 20\,Hz tick loop, c
                 \begin{itemize}\scriptsize
                     \item \textbf{Robot:} 7-DoF Franka Emika Panda with parallel-jaw gripper ($20\,\text{Hz}$ OSC control).
                     \item \textbf{Physics:} MuJoCo headless physics engine with compliant contact dynamics.
-                \end{itemize}
-            \end{block}
-            \begin{block}{Sensory \& Tabletop Assets}
-                \begin{itemize}\scriptsize
                     \item \textbf{Dual Viewpoints:} Orthographic \textit{top-down} (VLM grounding) + perspective \textit{frontview} (monitoring).
                     \item \textbf{Objects:} 5 pickable items (yellow/purple cubes, red/blue/green cans).
                     \item \textbf{Containers:} Sorting bin ($30\times 30\,\text{cm}$) + handled pot (collision obstacles).
@@ -1286,75 +1283,149 @@ The runtime engine executes the compiled Behavior Tree via a 20\,Hz tick loop, c
 
 
 \begin{frame}{End-to-End TAMP Pipeline Execution}
-    \small
+    \footnotesize
     \textbf{Task Mission:} \textit{``Put the red can in the sorting bin, then put the yellow cube in the pot, then put the blue can in the sorting bin.''}
-    \vspace{0.15cm}
+    
+    \vspace{0.05cm}
     \begin{columns}[T]
         \begin{column}{0.32\textwidth}
             \begin{block}{1. Perception \& Plan}
                 \begin{itemize}\scriptsize
-                    \item \textbf{Qwen 2.5-VL}: Resolves object locations from top-down frame.
-                    \item \textbf{Llama 3}: Synthesizes initial/goal PDDL predicates.
-                    \item \textbf{Fast Downward}: Generates $6$-step symbolic action plan in $<0.1\,\text{s}$.
+                    \item \textbf{Qwen 2.5-VL}: Scene Detection.
+                    \item \textbf{Llama 3}: PDDL synthesis.
+                    \item \textbf{Fast Downward}: $<0.1\,\text{s}$ plan.
                 \end{itemize}
             \end{block}
         \end{column}
         \begin{column}{0.34\textwidth}
             \begin{block}{2. BT Compilation}
                 \begin{itemize}\scriptsize
-                    \item Compiled into reactive \texttt{py\_trees} structure.
-                    \item Encapsulates pre-conditions, action sequences, and fallback recovery nodes.
-                    \item Continuous state tick monitoring at $20\,\text{Hz}$.
+                    \item Compiled \texttt{py\_trees} reactive tree.
+                    \item Pre-conditions \& fallback nodes.
+                    \item $20\,\text{Hz}$ continuous monitoring.
                 \end{itemize}
             \end{block}
         \end{column}
         \begin{column}{0.32\textwidth}
             \begin{block}{3. Motion \& Control}
                 \begin{itemize}\scriptsize
-                    \item \textbf{TaskSpaceRRT}: Computes collision-free transit paths ($\sim 30\,\text{ms}$).
-                    \item \textbf{Hybrid PPO}: Compliant grasp and lift ($\approx 1.7\,\text{s}$).
-                    \item \textbf{Placement}: Waypoint tracking to bin/pot.
+                    \item \textbf{TaskSpaceRRT}: Paths ($\sim 30\,\text{ms}$).
+                    \item \textbf{Hybrid PPO}: Grasp/lift ($\approx 1.7\,\text{s}$).
+                    \item \textbf{Placement}: Waypoint tracking.
+                \end{itemize}
+            \end{block}
+        \end{column}
+    \end{columns}
+
+    \vspace{0.08cm}
+    \begin{block}
+        \scriptsize
+        \begin{columns}[c]
+            \begin{column}{0.48\textwidth}
+                \centering
+                \href{https://github.com/vincip99/VLM-Driven-Neuro-Symbolic-Task-and-Motion-Planning-with-Ambiguity-Resolution/blob/master/Docs/pictures/simulation_trial_heuristic.gif}{%
+                    \includegraphics[height=1.65cm]{pictures/simulation_trial_heuristic_thumb.png}%
+                }\\[0.03cm]
+                \href{https://github.com/vincip99/VLM-Driven-Neuro-Symbolic-Task-and-Motion-Planning-with-Ambiguity-Resolution/blob/master/Docs/pictures/simulation_trial_heuristic.gif}{%
+                    \beamergotobutton{Heuristic Trial (simulation\_trial\_heuristic.gif)}%
+                }
+            \end{column}
+            \begin{column}{0.48\textwidth}
+                \centering
+                \href{https://github.com/vincip99/VLM-Driven-Neuro-Symbolic-Task-and-Motion-Planning-with-Ambiguity-Resolution/blob/master/Docs/pictures/simulation_trial_ppo.gif}{%
+                    \includegraphics[height=1.65cm]{pictures/simulation_trial_ppo_thumb.png}%
+                }\\[0.03cm]
+                \href{https://github.com/vincip99/VLM-Driven-Neuro-Symbolic-Task-and-Motion-Planning-with-Ambiguity-Resolution/blob/master/Docs/pictures/simulation_trial_ppo.gif}{%
+                    \beamergotobutton{PPO Policy Trial (simulation\_trial\_ppo.gif)}%
+                }
+            \end{column}
+        \end{columns}
+        \vspace{0.06cm}
+        \centering
+        \href{https://github.com/vincip99/VLM-Driven-Neuro-Symbolic-Task-and-Motion-Planning-with-Ambiguity-Resolution/tree/master}{%
+            \beamergotobutton{GitHub Repo: vincip99/.../tree/master}%
+        }
+    \end{block}
+\end{frame}
+
+\begin{frame}{Experimental Results: Main Scenario Performance}
+    \centering
+    \scriptsize
+    \begin{tabular}{llc}
+        \hline
+        \textbf{Pipeline Layer} & \textbf{Module / Algorithm} & \textbf{Latency / Steps} \\
+        \hline
+        Visual Grounding & Qwen 2.5-VL (3B) & $1.25\,\text{s}$ \\
+        PDDL Formulation & LLaMA 3 (8B) & $0.65\,\text{s}$ \\
+        Symbolic Planning & Fast Downward ($A^*$) & $\mathbf{0.08\,\text{s}}$ ($6$ causal actions) \\
+        Motion Planning & TaskSpaceRRT & $\mathbf{0.03\,\text{s}}$ / transit leg ($6$ legs) \\
+        Manipulation (Pick) & Hybrid TaskSpaceRRT + PPO & $79$--$132$ steps / pick \\
+        Reactive Executive & Behavior Tree (\texttt{py\_trees}) & $\mathbf{445\text{ ticks}}$ ($22.2\,\text{s}$) \\
+        \hline
+        \textbf{End-to-End System} & \textbf{Complete Architecture} & $\mathbf{24.2\,\text{s}}$ Total ($100\%$ Success) \\
+        \hline
+    \end{tabular}
+    \vspace{0.10cm}
+    \begin{columns}[T,totalwidth=\textwidth]
+        \begin{column}{0.48\textwidth}
+            \begin{block}{Planning and Execution}
+                \begin{itemize}\scriptsize
+                    \item \textbf{Causal Plan:} $\langle \text{pick}(cube) \to \text{pot}, \text{pick}(red) \to \text{bin}, \text{pick}(blue) \to \text{bin} \rangle$.
+                    \item \textbf{Transit Latency:} Rapid RRT synthesis ($\sim 30\,\text{ms}$) enables fluid navigation between table zones.
+                    \item \textbf{Total Duration:} Completed in $445$ ticks ($22.2\,\text{s}$) without timeouts.
+                \end{itemize}
+            \end{block}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \begin{block}{Robustness}
+                \begin{itemize}\scriptsize
+                    \item \textbf{Obstacle Clearance:} $0$ collisions with bin rims or pot handles across all $6$ transit trajectories.
+                    \item \textbf{Grasp Stability:} Zero object slip or drop events during transit; firm force closure maintained throughout.
                 \end{itemize}
             \end{block}
         \end{column}
     \end{columns}
 \end{frame}
 
-\begin{frame}{Experimental Results: Subsystem Performance}
-    \small
-    Quantitative evaluation across end-to-end multi-object sorting missions:
-    \vspace{0.15cm}
+\begin{frame}{Experimental Results: 28-Task Benchmark Performance}
+    \footnotesize
+    Deliberation and execution benchmark across \textbf{28 manipulation tasks}:
+    \vspace{0.08cm}
     \centering
     \scriptsize
-    \begin{tabular}{lcccc}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{lccccc}
         \hline
-        \textbf{Pipeline Layer} & \textbf{Module / Algorithm} & \textbf{Mean Latency} & \textbf{Success Rate} \\
+        \textbf{Benchmark Complexity Tier} & \textbf{Trials} & \textbf{Plan Length} & \textbf{1st-Pass Feas.} & \textbf{Post-Refl. Feas.} & \textbf{Task Execution Success} \\
         \hline
-        Visual Grounding & Qwen 2.5-VL (3B) & $1.25\,\text{s}$ & $100\%$ \\
-        PDDL Formulation & Llama 3 (8B) & $1.80\,\text{s}$ & $100\%$ \\
-        Symbolic Planning & Fast Downward ($A^*$) & $\mathbf{0.07\,\text{s}}$ & $100\%$ \\
-        Motion Planning & TaskSpaceRRT & $\mathbf{0.03\,\text{s}}$ & $100\%$ \\
-        Manipulation (Pick) & Hybrid PPO Policy & $1.71\,\text{s}$ & $88\%$ (PPO) \\
-        Fallback Execution & Deterministic Staged & $1.70\,\text{s}$ & $100\%$ (Fallback) \\
+        Tier 1: Single-Object Relocation & 5 & 2 steps & $80.0\%$ (4/5) & $\mathbf{100.0\%}$ (5/5) & $\mathbf{100.0\%}$ (5/5) \\
+        Tier 2: Two-Object Sequential & 6 & 4 steps & $50.0\%$ (3/6) & $\mathbf{100.0\%}$ (6/6) & $\mathbf{100.0\%}$ (6/6) \\
+        Tier 3: Three-Object Chained & 7 & 6 steps & $57.1\%$ (4/7) & $\mathbf{85.7\%}$ (6/7) & $\mathbf{85.7\%}$ (6/7)$^\dagger$ \\
+        Tier 4: Four-Object High-Complexity & 3 & 8 steps & $66.7\%$ (2/3) & $\mathbf{100.0\%}$ (3/3) & $\mathbf{100.0\%}$ (3/3) \\
+        Tier 5: Ambiguity \& Lexical Synonyms & 7 & 2--6 steps & $85.7\%$ (6/7) & $\mathbf{100.0\%}$ (7/7) & $\mathbf{100.0\%}$ (7/7) \\
         \hline
-        \textbf{End-to-End System} & \textbf{Complete Architecture} & \textbf{Total Mission} & $\mathbf{100\%}$ \\
+        \textbf{Total Benchmark Dataset} & \textbf{28} & \textbf{Up to 8 steps} & $\mathbf{67.9\%}$ ($19/28$) & $\mathbf{96.4\%}$ ($27/28$) & $\mathbf{96.4\%}$ ($27/28$) \\
         \hline
-    \end{tabular}
-    \vspace{0.25cm}
-    \begin{columns}[T]
-        \begin{column}{0.48\textwidth}
-            \begin{block}{Key Findings}
+    \end{tabular}%
+    }
+    \vspace{0.08cm}
+    \begin{columns}[T,totalwidth=\textwidth]
+        \begin{column}{0.49\textwidth}
+            \begin{block}{LLM Failure Modes \& Auto-Repair}
                 \begin{itemize}\scriptsize
-                    \item Symbolic \& motion planning combined require \textbf{$<0.1\,\text{s}$}, enabling agile replanning.
-                    \item Zero collisions observed with container walls across all transit trajectories.
+                    \item \textbf{Schema Validation (21.4\%):} Syntax / phrasing errors caught by Pydantic; repaired on Retries 1--2.
+                    \item \textbf{State Incompleteness (Trial 9):} Initial predicate omission repaired via compiler trace feedback.
+                    \item \textbf{Duplicate Declaration (Trial 15):} LLaMA 3 repeated receptacle declaration in \texttt{(:objects)}, caught by solver.
+                    \item \textbf{Auto-Repair Gain:} Lifted feasibility from $\mathbf{67.9\%} \to \mathbf{96.4\%}$ ($8/9$ initial errors resolved).
                 \end{itemize}
             \end{block}
         \end{column}
-        \begin{column}{0.48\textwidth}
-            \begin{block}{Execution Guarantees}
+        \begin{column}{0.49\textwidth}
+            \begin{block}{Manipulation: PPO Failures \& BT Fallback}
                 \begin{itemize}\scriptsize
-                    \item The hybrid RL-fallback mechanism ensures zero mission halts on manipulation failures.
-                    \item Modular design decouples high-level task planning from local contact mechanics.
+                    \item \textbf{PPO Competence:} $\mathbf{92.5\%}$ pick success on cubes ($\mathbf{95\%}$ Yellow trained, $\mathbf{90\%}$ Purple zero-shot).
+                    \item \textbf{PPO Failure Modes:} Out-of-distribution tall cylinder geometry and micro-contact roll cause step budget timeout ($\ge 90$ steps).
+                    \item \textbf{Fallback Guarantee:} Behavior Tree fallback node seamlessly triggers deterministic FSM upon timeout $\to$ $\mathbf{100\%}$ on dispatched plans ($^\dagger27/27$).
                 \end{itemize}
             \end{block}
         \end{column}
@@ -1373,7 +1444,7 @@ The runtime engine executes the compiled Behavior Tree via a 20\,Hz tick loop, c
         \begin{column}{0.50\textwidth}
             \begin{block}{Core Contributions}
                 \begin{itemize}\scriptsize
-                    \item \textbf{Neuro-Symbolic Deliberation:} Autonomous extraction of $(s_0, G)$ from RGB frames and language, fortified by interactive disambiguation and auto-repair (100\% solver feasibility).
+                    \item \textbf{Neuro-Symbolic Deliberation:} Autonomous extraction of $(s_0, G)$ from RGB frames and language, fortified by interactive disambiguation and auto-repair ($96.4\%$ solver feasibility).
                     \item \textbf{Formal Fast Downward Gatekeeper:} Guarantees causal plan validity in $<0.08\,\text{s}$ before physical dispatch.
                     \item \textbf{Reactive Executive Layer:} Behavior Trees compile action sequences into tick-based subtrees with continuous pre/post-condition monitoring.
                     \item \textbf{Robust Hybrid Control:} TaskSpaceRRT ensures collision-free transit, while BC-bootstrapped PPO achieves reliable contact-rich grasping.

@@ -1,21 +1,20 @@
-(define (problem manipulation_task)
+(define (problem manipulation-task)
   (:domain manipulation)
   (:objects
     red_can - obj
-    yellow_cube - obj
     blue_can - obj
-    pot - location
+    yellow_cube - obj
     sorting_bin - location
-    table - location
+    pot - location
   )
   (:init
     (on-table red_can)
-    (on-table yellow_cube)
     (on-table blue_can)
+    (on-table yellow_cube)
   )
   (:goal (and
     (on red_can sorting_bin)
-    (on yellow_cube pot)
     (on blue_can sorting_bin)
+    (on yellow_cube pot)
   ))
 )
