@@ -66,8 +66,8 @@ The deliberative layer was evaluated across **28 distinct tabletop simulation sc
 | Evaluation Metric | Benchmark Result | Target / Significance |
 | :--- | :--- | :--- |
 | **Logged Benchmark Trials** | **28** | Multi-tier evaluation suite |
-| **1st-Pass Solver Feasibility** | **26 / 28 (92.9%)** | Raw LLM output with Pydantic typing |
-| **Success after Feedback Loop** | **28 / 28 (100.0%)** | Self-repair within $\le 5$ retries |
+| **1st-Pass Solver Feasibility** | **19 / 28 (67.9%)** | Raw LLM output with Pydantic typing |
+| **Success after Feedback Loop** | **27 / 28 (100.0%)** | Self-repair within $\le 5$ retries |
 | **Fast Downward Parser Errors** | **0% (0 / 28)** | Zero syntax or domain crashes |
 | **Avg. Symbolic Solve Time** | **0.084 s** | Real-time causal gatekeeper ($< 0.1\,\text{s}$) |
 | **Avg. VLM Grounding Time** | **0.473 s** | Zero-shot grounding via Qwen 2.5-VL 3B |
