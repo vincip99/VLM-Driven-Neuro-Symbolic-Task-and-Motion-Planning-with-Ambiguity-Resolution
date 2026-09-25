@@ -175,6 +175,16 @@ def main():
         print(f"\n[Grounded Objects]: {final_objects}")
         print(f"[Grounded Locations]: {final_locations}")
 
+        print("\n🎯 [Final Grounded Entities for PDDL Problem Synthesis]:")
+        print("   📦 Objects (type 'obj'):")
+        for idx, name in enumerate(final_objects, 1):
+            pddl_name = name.strip().replace(" ", "_")
+            print(f"      ({idx}) Natural Name: '{name}'  ==> PDDL Symbol: '{pddl_name}'")
+        print("   📍 Locations (type 'location'):")
+        for idx, name in enumerate(final_locations, 1):
+            pddl_name = name.strip().replace(" ", "_")
+            print(f"      ({idx}) Natural Name: '{name}'  ==> PDDL Symbol: '{pddl_name}'")
+
         print("\n[Step 4] Generating Problem PDDL JSON via Reasoning Pipeline...")
         try:
             initial_state_desc = "All objects are currently resting on the table. The robot's arm is empty."

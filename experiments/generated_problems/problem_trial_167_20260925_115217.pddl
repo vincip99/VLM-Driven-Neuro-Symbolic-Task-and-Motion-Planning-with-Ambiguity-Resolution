@@ -6,6 +6,7 @@
     blue_can - obj
     sorting_bin - location
     pot - location
+    brown_table - location
   )
   (:init
     (on-table red_can)
